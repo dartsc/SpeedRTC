@@ -176,6 +176,51 @@ By deploying a simple Node.js script to a cheap VPS (using a library like `node-
 4. Your browser tunnels all `rtc.proxy.fetch()` traffic through the Node.js server.
 5. Because the exit node is running Node.js, **it FULLY bypasses CORS** it also cannot at all be blocked by any browser, monitoring extensions, or networks (Unless They Block a certain part of this which i will not specify here so that doesnt EVER happen) and can fetch absolutely any domain or API on the open internet and stream the raw bytes back to your browser!
 
+### ⚡ Server Mode (Optimized Proxy Connections)
+
+When connecting to a **dedicated server** (e.g. a VPS exit node), enable `serverMode` to unlock a fully optimized proxy pipeline. This mode tunes every layer of FastRTC for maximum client↔server throughput and minimum latency.
+
+```javascript
+// Client connecting to a known dedicated server
+const rtc = new FastRTC({
+  serverMode: true,
+  isHost: false
+});
+
+// Server-side
+const server = new FastRTC({
+  serverMode: true,
+  isHost: true
+});
+server.proxy.serve();
+```
+
+**What `serverMode` changes:**
+
+| Layer | Default | Server Mode |
+|---|---|---|
+| Data channels | Unordered (for P2P) | **Ordered** (eliminates reordering overhead on stable links) |
+| Proxy send path | Routes through bonding engine | **Direct pool send** — bypasses bonding entirely, uses synchronous fast-path |
+| Buffer high watermark | 1 MB | **512 KB** (tighter backpressure = faster push-through) |
+| Buffer low watermark | 256 KB | **128 KB** (resume sooner) |
+| Probe interval | 3 seconds | **8 seconds** (stable connections don't need frequent probes) |
+| Body chunk size | 48 KB | **128 KB** (fewer frames per response) |
+| Response body sends | Sequential | **Pipelined** (up to 4 chunks in flight simultaneously) |
+| Bonding `sendSingle()` | Recalculates weights every call | **Round-robin fast-path**, skips weight calculation for single-destination |
+| Buffer wait timeout | 5 seconds | **1.5 seconds** (fail fast on congestion) |
+| Proxy request timeout | 30 seconds | **15 seconds** |
+
+These optimizations apply automatically when `serverMode: true` is set. You can combine it with all other options:
+
+```javascript
+const rtc = new FastRTC({
+  serverMode: true,
+  trackerUrls: ['wss://my-tracker.example.com/announce'],
+  requireRoomCode: true,
+  dataChannels: 64  // Even more channels for higher aggregate throughput
+});
+```
+
 ---
 
 ## 5. Video / Audio Streaming
@@ -246,3 +291,90 @@ When you are done, cleanly disconnect the P2P mesh and the tracker arrays:
 ```javascript
 rtc.disconnect();
 ```
+
+---
+
+## 7. Drive Traversal Signaling (Alpha)
+
+FastRTC can use a **Google Spreadsheet** as the signaling channel instead of WebTorrent trackers. Each peer gets a unique 9-character alphanumeric column header (e.g. `439ARWI38`), and signaling messages (SDP offers, answers, ICE candidates) are written as rows under that column. The remote peer polls the sheet to read them.
+
+This lets you integrate your own Google Drive credentials and use a shared spreadsheet as the signaling relay — no WebSocket servers or public trackers needed.
+
+> **Alpha**: Client-side reads and writes via Google Sheets API v4.
+> **Beta** (planned): Server-sent writes — the server POSTs signaling data to the sheet; clients only need read access.
+
+### Spreadsheet Layout
+
+| 439ARWI38 | 7BX2KM91P |
+|---|---|
+| `{"type":"offer","sdp":{…}}` | `{"type":"answer","sdp":{…}}` |
+| `{"type":"ice-candidate","candidate":{…}}` | `{"type":"ice-candidate","candidate":{…}}` |
+
+Row 1 = peer ID headers. Row 2+ = JSON signaling messages from that peer.
+
+### Setup
+
+1. Create a Google Spreadsheet and note its **Spreadsheet ID** (the long string in the URL between `/d/` and `/edit`).
+2. Obtain an **OAuth2 access token** with the `https://www.googleapis.com/auth/spreadsheets` scope.
+3. Pass both as the `driveSignal` config:
+
+```javascript
+const rtc = new FastRTC({
+  driveSignal: {
+    spreadsheetId: '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms',
+    accessToken: 'ya29.a0AfH6SM...your_oauth2_token',
+    pollInterval: 1500,  // How often to check for new messages (ms)
+  }
+});
+
+// Works exactly like normal — createRoom / joinRoom, messaging, files, proxy
+const code = await rtc.createRoom('MY-ROOM');
+```
+
+When `driveSignal` is set, FastRTC automatically uses `DriveSignal` instead of the default `TorrentSignal`. Everything else — room creation, peer connection, file transfers, messaging, proxying — works identically.
+
+### Read-Only Mode (API Key)
+
+If you only have a Google API key (no OAuth), a peer can **read** the spreadsheet but not write. This is useful for a monitoring dashboard or observer:
+
+```javascript
+const rtc = new FastRTC({
+  driveSignal: {
+    spreadsheetId: '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms',
+    apiKey: 'AIzaSy...your_api_key',
+  }
+});
+```
+
+### Using DriveSignal Directly
+
+You can also import `DriveSignal` standalone for custom signaling flows:
+
+```javascript
+import { DriveSignal } from 'fastrtc';
+
+const signal = new DriveSignal('MY-ROOM', true, {
+  spreadsheetId: '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms',
+  accessToken: 'ya29.a0AfH6SM...',
+});
+
+signal.onOpen = () => console.log('Sheet signaling ready');
+signal.onMessage = (msg) => console.log('Received:', msg);
+
+await signal.connect();
+signal.send({ type: 'offer', sdp: localDescription });
+
+// Clean up message rows when done
+await signal.cleanup();
+signal.close();
+```
+
+### Configuration Options
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `spreadsheetId` | string | *required* | Google Spreadsheet ID |
+| `accessToken` | string | — | OAuth2 access token (read + write) |
+| `apiKey` | string | — | API key (read-only fallback) |
+| `pollInterval` | number | `1500` | Polling frequency in milliseconds |
+| `sheetName` | string | room code | Sheet tab name (one tab per room) |
