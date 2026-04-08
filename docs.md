@@ -315,27 +315,130 @@ Row 1 = peer ID headers. Row 2+ = JSON signaling messages from that peer.
 ### Setup
 
 1. Create a Google Spreadsheet and note its **Spreadsheet ID** (the long string in the URL between `/d/` and `/edit`).
-2. Obtain an **OAuth2 access token** with the `https://www.googleapis.com/auth/spreadsheets` scope.
-3. Pass both as the `driveSignal` config:
+2. Pick an auth mode (see below) and pass it alongside the spreadsheet ID.
+
+#### Auth Mode 1: Raw Request (Zero Auth — client only, works from plain HTML)
+
+The absolute simplest mode. **Zero OAuth, zero API keys, zero GCP setup.** Uses the browser's existing Google login cookies to write directly to the spreadsheet via Google's internal save endpoint, and reads via the public JSONP endpoint.
+
+**Requirements:**
+- You must be logged into Google in the same browser
+- The spreadsheet must be shared as **"Anyone with the link can view"** (for reads)
+- Extract the `token` from any save request in DevTools (one time)
+
+**How to get the token:**
+1. Open your spreadsheet in Chrome
+2. Open DevTools → Network tab
+3. Type something in any cell and press Enter
+4. In the Network tab, find the `save?id=...` request
+5. Copy the `token` query parameter value
+
+```html
+<!-- index.html — open directly from file://, no server needed -->
+<script type="module">
+  import { FastRTC } from './dist/fastrtc.es.js';
+
+  const rtc = new FastRTC({
+    driveSignal: {
+      spreadsheetId: '1g0AAUVcJi5q7dwO4Tpyaqo7sx6PPBVoYAJqXjQNBzxo',
+      raw: {
+        token: 'AC4w5Vhz9QV0K9Z2_jRcPIAZrX3CI4X-wA:1775606624663',
+        // Optional: ouid, gid, rev
+      }
+    }
+  });
+
+  const code = await rtc.createRoom('MY-ROOM');
+</script>
+```
+
+- **Writes**: Fire-and-forget POST to the internal `docs.google.com` save endpoint with `credentials: 'include'` — the browser attaches your Google cookies automatically.
+- **Reads**: JSONP script‑tag injection to the public gviz endpoint — no auth needed since the sheet is shared.
+
+No tokens expire, no popups, no OAuth flows. As long as you're logged into Google, it works.
+
+#### Auth Mode 2: Client-Only (Alpha — OAuth popup, works from plain HTML)
+
+The simplest mode. Just provide a **Google OAuth2 Client ID** — no secrets, no server, no backend. DriveSignal loads Google Identity Services in the browser and pops up a one-time consent dialog. After that, tokens auto-renew silently.
+
+Works from a plain HTML file opened via `file://` or any static host.
+
+**GCP setup** (one-time):
+1. Go to [Google Cloud Console → Credentials](https://console.cloud.google.com/apis/credentials)
+2. Create an **OAuth 2.0 Client ID** of type **Web application**
+3. Under "Authorized JavaScript origins", add your origin (or leave blank for `file://`)
+4. Copy the Client ID
+
+```html
+<!-- index.html — open directly in a browser, no server needed -->
+<script type="module">
+  import { FastRTC } from './dist/fastrtc.es.js';
+
+  const rtc = new FastRTC({
+    driveSignal: {
+      spreadsheetId: '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms',
+      clientId: '123456789.apps.googleusercontent.com',
+    }
+  });
+
+  // First call: user sees a Google sign-in popup (one time)
+  // After that: tokens refresh silently in the background
+  const code = await rtc.createRoom('MY-ROOM');
+</script>
+```
+
+That's it. No `clientSecret`, no `refreshToken`, no service account key. The browser handles everything.
+
+#### Auth Mode 3: Service Account (Recommended for automation — never expires)
+
+Create a GCP service account, download the JSON key, and share the spreadsheet with its email. No user interaction, no token refresh — it mints its own tokens via JWT + Web Crypto:
+
+```javascript
+const rtc = new FastRTC({
+  driveSignal: {
+    spreadsheetId: '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms',
+    serviceAccount: {
+      client_email: 'fastrtc@my-project.iam.gserviceaccount.com',
+      private_key: '-----BEGIN PRIVATE KEY-----\nMIIEvg...\n-----END PRIVATE KEY-----\n',
+    },
+  }
+});
+
+const code = await rtc.createRoom('MY-ROOM');
+```
+
+#### Auth Mode 4: Refresh Token (Never expires, user-scoped)
+
+Provide your OAuth2 `client_id`, `client_secret`, and a long-lived `refresh_token`. DriveSignal auto-exchanges it for new access tokens every ~55 minutes:
+
+```javascript
+const rtc = new FastRTC({
+  driveSignal: {
+    spreadsheetId: '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms',
+    clientId: '123456789.apps.googleusercontent.com',
+    clientSecret: 'GOCSPX-abc123...',
+    refreshToken: '1//0abc..._long_lived_refresh_token',
+    pollInterval: 1500,
+  }
+});
+```
+
+#### Auth Mode 5: Direct Access Token (Temporary — ~60 min)
+
+If you already have a short-lived OAuth2 access token:
 
 ```javascript
 const rtc = new FastRTC({
   driveSignal: {
     spreadsheetId: '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms',
     accessToken: 'ya29.a0AfH6SM...your_oauth2_token',
-    pollInterval: 1500,  // How often to check for new messages (ms)
   }
 });
-
-// Works exactly like normal — createRoom / joinRoom, messaging, files, proxy
-const code = await rtc.createRoom('MY-ROOM');
 ```
 
-When `driveSignal` is set, FastRTC automatically uses `DriveSignal` instead of the default `TorrentSignal`. Everything else — room creation, peer connection, file transfers, messaging, proxying — works identically.
+#### Auth Mode 6: API Key (Read-only)
 
-### Read-Only Mode (API Key)
-
-If you only have a Google API key (no OAuth), a peer can **read** the spreadsheet but not write. This is useful for a monitoring dashboard or observer:
+If you only have a Google API key (no OAuth), a peer can **read** the spreadsheet but not write. Useful for a monitoring dashboard or observer:
 
 ```javascript
 const rtc = new FastRTC({
@@ -346,6 +449,8 @@ const rtc = new FastRTC({
 });
 ```
 
+When `driveSignal` is set, FastRTC automatically uses `DriveSignal` instead of the default `TorrentSignal`. Everything else — room creation, peer connection, file transfers, messaging, proxying — works identically.
+
 ### Using DriveSignal Directly
 
 You can also import `DriveSignal` standalone for custom signaling flows:
@@ -355,7 +460,9 @@ import { DriveSignal } from 'fastrtc';
 
 const signal = new DriveSignal('MY-ROOM', true, {
   spreadsheetId: '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms',
-  accessToken: 'ya29.a0AfH6SM...',
+  clientId: '123456789.apps.googleusercontent.com',
+  clientSecret: 'GOCSPX-abc123...',
+  refreshToken: '1//0abc..._long_lived_refresh_token',
 });
 
 signal.onOpen = () => console.log('Sheet signaling ready');
@@ -374,7 +481,12 @@ signal.close();
 | Option | Type | Default | Description |
 |---|---|---|---|
 | `spreadsheetId` | string | *required* | Google Spreadsheet ID |
-| `accessToken` | string | — | OAuth2 access token (read + write) |
+| `raw` | object | — | `{ token, ouid?, gid?, rev? }` — Zero-auth raw request mode. Uses browser cookies. |
+| `clientId` | string | — | OAuth2 client ID. **Alone** = client-only browser popup auth (no server). With `clientSecret` + `refreshToken` = refresh flow. |
+| `serviceAccount` | object | — | `{ client_email, private_key }` from a GCP service account JSON key |
+| `clientSecret` | string | — | OAuth2 client secret (only needed for refresh token flow) |
+| `refreshToken` | string | — | Long-lived refresh token (requires clientId + clientSecret) |
+| `accessToken` | string | — | Direct OAuth2 access token (temporary, ~60 min) |
 | `apiKey` | string | — | API key (read-only fallback) |
 | `pollInterval` | number | `1500` | Polling frequency in milliseconds |
 | `sheetName` | string | room code | Sheet tab name (one tab per room) |
