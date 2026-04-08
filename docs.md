@@ -22,20 +22,16 @@ Include the bundled library from `dist/fastrtc.umd.js` or import it via ESM:
 <script type="module">
   import { FastRTC } from './dist/fastrtc.es.js';
 
-  // Initialize the library
   const rtc = new FastRTC({
-    dataChannels: 32, // The number of parallel bonded channels (default 32)
-    isHost: false,    // Set to true if this peer provides proxy/server services like Ultraviolet or Scramjet
-    requireRoomCode: false // By default, FastRTC connects globally without a code
+    dataChannels: 32,
+    isHost: false,
+    requireRoomCode: false
   });
 
-  // Listen for connection events
   rtc.on('connected', (info) => {
-    // info.remoteIsHost tells you if the peer you connected to is a Host!
     console.log(`P2P connected! Remote peer isHost: ${info.remoteIsHost}`);
   });
 
-  // Get library version
   console.log(`Initialized FastRTC v${rtc.getVersion()}`);
 </script>
 ```
@@ -45,10 +41,8 @@ Include the bundled library from `dist/fastrtc.umd.js` or import it via ESM:
 By default, FastRTC matchmakes **without a secure code**. This creates a single global P2P pool where any host can accept any client automatically.
 
 ```javascript
-// Peer 1 (Host/Server): Wait for someone to join the global swarm
 await rtc.joinRoom();
 
-// Peer 2 (Client): Connect to the global swarm
 await rtc.createRoom(); 
 ```
 
@@ -58,11 +52,9 @@ If you want to isolate your connection, you can optionally enable secure private
 ```javascript
 const secureRtc = new FastRTC({ requireRoomCode: true });
 
-// Peer 1 generates a secure 6-digit code
 const roomCode = await secureRtc.createRoom();
 console.log(`Share this code: ${roomCode}`);
 
-// Peer 2 joins using that exact code
 await secureRtc.joinRoom(roomCode);
 ```
 
@@ -90,18 +82,14 @@ When `trackerUrls` is provided, the built-in public trackers are **replaced enti
 Send any file type directly peer-to-peer. The data is chunked and striped across all 32 channels.
 
 ```javascript
-// Send a file (e.g., from an <input type="file"> event)
 rtc.sendFile(fileObject);
 
-// Track outgoing progress
 rtc.on('send-start', ({ name, totalChunks }) => console.log(`Sending ${name}`));
 rtc.on('progress', ({ percent }) => console.log(`${percent}% sent`));
 rtc.on('send-complete', ({ name }) => console.log('Upload finished!'));
 
-// Receive a file
 rtc.on('file-incoming', ({ name, size }) => console.log(`Incoming: ${name}`));
 rtc.on('file', ({ name, data }) => {
-  // data is an ArrayBuffer containing the full file
   const blob = new Blob([data]);
   const url = URL.createObjectURL(blob);
   
@@ -119,15 +107,12 @@ rtc.on('file', ({ name, data }) => {
 Send pure JSON strings or raw binary array buffers.
 
 ```javascript
-// Send text
 rtc.message.send("Hello from Peer 1!");
 
-// Receive text
 rtc.message.on('text', (msg) => {
   console.log(`Received message: ${msg}`);
 });
 
-// Binary messaging is also supported:
 rtc.message.sendBinary(new Uint8Array([1, 2, 3]));
 rtc.message.on('binary', (buffer) => { ... });
 ```
@@ -140,10 +125,9 @@ One of the most powerful features of FastRTC. You can set one peer as an "Exit N
 
 **Peer 1 (The Exit Node / Server)**
 ```javascript
-// Starts listening for proxy requests from Peer 2
 rtc.proxy.serve({
-  allowList: [], // Optional: array of allowed domains
-  blockList: []  // Optional: array of blocked domains 
+  allowList: [],
+  blockList: []
 });
 
 // Stop serving
@@ -152,7 +136,6 @@ rtc.proxy.serve({
 
 **Peer 2 (The Client)**
 ```javascript
-// The client uses rtc.proxy.fetch() exactly like the standard fetch() API!
 const response = await rtc.proxy.fetch('https://httpbin.org/get', {
   method: 'GET',
   headers: {
@@ -170,10 +153,10 @@ console.log(data);
 
 ```javascript
 rtc.proxy.serve({
-  allowList: [],        // glob patterns for allowed domains (empty = allow all)
-  blockList: [],        // glob patterns for blocked domains
-  chunkSize: 16384,     // body chunk size in bytes (default 16KB)
-  compress: false       // gzip-compress response bodies before sending
+  allowList: [],        
+  blockList: [],
+  chunkSize: 16384,
+  compress: false
 });
 ```
 
@@ -232,13 +215,11 @@ By deploying a simple Node.js script to a cheap VPS (using a library like `node-
 When connecting to a **dedicated server** (e.g. a VPS exit node), enable `serverMode` to unlock a fully optimized proxy pipeline. This mode tunes every layer of FastRTC for maximum client↔server throughput and minimum latency.
 
 ```javascript
-// Client connecting to a known dedicated server
 const rtc = new FastRTC({
   serverMode: true,
   isHost: false
 });
 
-// Server-side
 const server = new FastRTC({
   serverMode: true,
   isHost: true
@@ -269,7 +250,7 @@ const rtc = new FastRTC({
   serverMode: true,
   trackerUrls: ['wss://my-tracker.example.com/announce'],
   requireRoomCode: true,
-  dataChannels: 64  // Even more channels for higher aggregate throughput
+  dataChannels: 64
 });
 ```
 
@@ -280,19 +261,15 @@ const rtc = new FastRTC({
 Start native WebRTC media streaming for camera, microphones, or screen shares.
 
 ```javascript
-// Start the camera and get your local stream
 const myStream = await rtc.media.startCamera({ video: true, audio: true });
 document.getElementById('myVideo').srcObject = myStream;
 
-// Or start a screen share
 const myScreen = await rtc.media.startScreenShare();
 
-// Receive the remote peer's stream
 rtc.media.on('remoteStream', (remoteStream) => {
   document.getElementById('peerVideo').srcObject = remoteStream;
 });
 
-// Stop sending media
 rtc.media.stop();
 ```
 
@@ -303,15 +280,12 @@ rtc.media.stop();
 If you need to push a live binary feed (e.g. game state, remote desktop pixels, live rendering), you can open a continuous named stream.
 
 ```javascript
-// Peer 1: Create a stream
 const stream = rtc.stream.create('live-feed');
 
-// Write data as fast as you want (it handles backpressure automatically)
 setInterval(() => {
   stream.write(new Uint8Array([ 0x01, 0x02, 0x03 ]));
-}, 16); // 60 FPS tick feed
+}, 16);
 
-// Peer 2: Listen for chunks on the stream
 rtc.stream.on('stream-feed', (chunk) => {
   console.log('Received frame:', chunk);
 });
@@ -330,7 +304,7 @@ setInterval(() => {
   
   let totalSpeed = 0;
   for (const [id, data] of Object.entries(stats.links)) {
-    totalSpeed += data.throughput; // bytes per second
+    totalSpeed += data.throughput;
   }
   
   console.log(`Aggregate Throughput: ${(totalSpeed / 1024 / 1024).toFixed(2)} MB/s`);
