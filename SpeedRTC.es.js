@@ -1,6 +1,6 @@
-var ve = Object.defineProperty;
-var Oe = (h, e, t) => e in h ? ve(h, e, { enumerable: !0, configurable: !0, writable: !0, value: t }) : h[e] = t;
-var he = (h, e, t) => Oe(h, typeof e != "symbol" ? e + "" : e, t);
+var Ue = Object.defineProperty;
+var Oe = (l, e, t) => e in l ? Ue(l, e, { enumerable: !0, configurable: !0, writable: !0, value: t }) : l[e] = t;
+var he = (l, e, t) => Oe(l, typeof e != "symbol" ? e + "" : e, t);
 class Le {
   constructor(e, { channelCount: t = 4, ordered: s = !1, protocol: n = "speedrtc" } = {}) {
     this.pc = e, this.channelCount = t, this.ordered = s, this.protocol = n, this.channels = [], this.openChannels = /* @__PURE__ */ new Set(), this._rrIndex = 0, this._openArray = [], this._openArrayDirty = !0, this._onMessage = null, this._onOpen = null, this._onClose = null;
@@ -110,7 +110,7 @@ class Le {
   }
 }
 const le = 0.3, Ne = 2e4, De = 8e3, We = 5e3, Be = 4, $e = 1;
-class qe {
+class He {
   constructor(e) {
     this.url = e, this.ws = null, this.connected = !1, this.latency = 0, this.load = 0, this.score = 1, this._lastSentAt = 0, this._awaitingResponse = !1, this._onMessage = null;
   }
@@ -184,7 +184,7 @@ class qe {
 }
 class Re {
   constructor(e) {
-    this.nodes = e.map((t) => new qe(t)), this._active = [], this._primary = null, this._pingTimer = null, this._rebalanceTimer = null, this._closed = !1, this.onMessage = null, this.onRebalance = null, this.onNodeJoined = null;
+    this.nodes = e.map((t) => new He(t)), this._active = [], this._primary = null, this._pingTimer = null, this._rebalanceTimer = null, this._closed = !1, this.onMessage = null, this.onRebalance = null, this.onNodeJoined = null;
   }
   get connected() {
     return this._active.some((e) => e.connected);
@@ -203,12 +203,12 @@ class Re {
         s >= i && !n && (this._active.length > 0 ? (n = !0, this._primary = this._best(), this._startTimers(), e(this._active.length)) : t(new Error("SignalManager: all trackers failed to connect")));
       };
       for (const c of this.nodes)
-        c._onMessage = (o, a) => this._onRawMessage(o, a), c.connect().then((o) => {
+        c._onMessage = (a, o) => this._onRawMessage(a, o), c.connect().then((a) => {
           if (s++, this._closed) {
-            o.close(), r();
+            a.close(), r();
             return;
           }
-          this._active.length < Be ? (this._active.push(o), n && (this._rebalance(), this.onNodeJoined && this.onNodeJoined(o.url))) : o.close(), r();
+          this._active.length < Be ? (this._active.push(a), n && (this._rebalance(), this.onNodeJoined && this.onNodeJoined(a.url))) : a.close(), r();
         }).catch(() => {
           s++, r();
         });
@@ -375,13 +375,13 @@ class se {
   }
 }
 he(se, "DEFAULT_TRACKER_URLS", de);
-const Y = "https://oauth2.googleapis.com/token", ue = "https://www.googleapis.com/auth/spreadsheets", He = "https://accounts.google.com/gsi/client";
+const X = "https://oauth2.googleapis.com/token", ue = "https://www.googleapis.com/auth/spreadsheets", Fe = "https://accounts.google.com/gsi/client";
 let fe = !1, J = null;
-const Q = /* @__PURE__ */ new Map();
-function _e(h) {
-  return h ? h.refreshToken ? `refresh:${h.clientId}:${h.refreshToken.slice(-12)}` : h.serviceAccount ? `service:${h.serviceAccount.client_email}` : h.accessToken ? `static:${h.accessToken.slice(-12)}` : null : null;
+const Y = /* @__PURE__ */ new Map();
+function _e(l) {
+  return l ? l.refreshToken ? `refresh:${l.clientId}:${l.refreshToken.slice(-12)}` : l.serviceAccount ? `service:${l.serviceAccount.client_email}` : l.accessToken ? `static:${l.accessToken.slice(-12)}` : null : null;
 }
-class p {
+class m {
   constructor(e, t, s = {}) {
     if (this.roomCode = e, this.isOfferer = t, this._driveConfig = s, this.spreadsheetId = s.spreadsheetId, this.pollInterval = s.pollInterval || 500, this.sheetName = s.sheetName || e, !this.spreadsheetId)
       throw new Error("DriveSignal requires a spreadsheetId");
@@ -404,7 +404,7 @@ class p {
       throw new Error(
         "DriveSignal requires one of: raw ({ token }), clientId (client-only), accessToken, refreshToken (+ clientId/clientSecret), serviceAccount, or apiKey"
       );
-    this.peerId = p._generatePeerId(), this.remotePeerId = null, this.onMessage = null, this.onOpen = null, this.onClose = null, this.connected = !1, this._pollTimer = null, this._myColumn = null, this._remoteColIndex = null, this._readCursor = 1, this._destroyed = !1, this._baseUrl = "https://sheets.googleapis.com/v4/spreadsheets";
+    this.peerId = m._generatePeerId(), this.remotePeerId = null, this.onMessage = null, this.onOpen = null, this.onClose = null, this.connected = !1, this._pollTimer = null, this._myColumn = null, this._remoteColIndex = null, this._readCursor = 1, this._destroyed = !1, this._baseUrl = "https://sheets.googleapis.com/v4/spreadsheets";
   }
   async warmup() {
     if (this._authMode === "refresh" || this._authMode === "service")
@@ -416,10 +416,10 @@ class p {
   static async warmupToken(e) {
     const t = _e(e);
     if (!t) return;
-    const s = Q.get(t);
+    const s = Y.get(t);
     if (!(s && Date.now() < s.expiry - 5e3))
       try {
-        await new p("__warmup__", !1, e)._ensureToken();
+        await new m("__warmup__", !1, e)._ensureToken();
       } catch {
       }
   }
@@ -427,7 +427,7 @@ class p {
     try {
       if (this._authMode === "raw") {
         if (await this._registerColumn(), this._lastRawValues && this._myColumn) {
-          const e = p._colIndex(this._myColumn);
+          const e = m._colIndex(this._myColumn);
           let t = 0;
           for (let s = 0; s < this._lastRawValues.length; s++)
             this._lastRawValues[s] && this._lastRawValues[s][e] && (t = s + 1);
@@ -481,20 +481,20 @@ class p {
     }
     const t = e.indexOf(this.peerId);
     if (t >= 0) {
-      this._myColumn = p._colLetter(t);
+      this._myColumn = m._colLetter(t);
       return;
     }
     const s = e.length;
-    this._myColumn = p._colLetter(s), await this._writeCell(`${this.sheetName}!${this._myColumn}1`, this.peerId);
+    this._myColumn = m._colLetter(s), await this._writeCell(`${this.sheetName}!${this._myColumn}1`, this.peerId);
   }
   async _registerColumn() {
     const e = await this._readHeaders(), t = e.indexOf(this.peerId);
     if (t >= 0) {
-      this._myColumn = p._colLetter(t);
+      this._myColumn = m._colLetter(t);
       return;
     }
     const s = e.length;
-    this._myColumn = p._colLetter(s), await this._writeCell(`${this.sheetName}!${this._myColumn}1`, this.peerId);
+    this._myColumn = m._colLetter(s), await this._writeCell(`${this.sheetName}!${this._myColumn}1`, this.peerId);
   }
   _startPolling() {
     this._poll(), this._pollTimer = setInterval(() => this._poll(), this.pollInterval);
@@ -527,7 +527,7 @@ class p {
           }
         }
         if (this._authMode === "raw" && this._myColumn) {
-          const s = p._colIndex(this._myColumn);
+          const s = m._colIndex(this._myColumn);
           let n = 0;
           for (let i = 0; i < e.length; i++)
             e[i] && e[i][s] && (n = i + 1);
@@ -540,27 +540,27 @@ class p {
     await this._ensureToken();
     const n = e.includes("?") ? "&" : "?", i = !this._accessToken && this._apiKey ? `${n}key=${encodeURIComponent(this._apiKey)}` : "", r = `${this._baseUrl}${e}${i}`, c = { "Content-Type": "application/json" };
     this._accessToken && (c.Authorization = `Bearer ${this._accessToken}`);
-    const o = { method: t, headers: c };
-    s && (o.body = JSON.stringify(s));
-    let a = await fetch(r, o);
-    if (a.status === 401 && this._authMode !== "static" && this._authMode !== "apikey" && (this._tokenExpiry = 0, await this._ensureToken(), this._accessToken && (o.headers.Authorization = `Bearer ${this._accessToken}`), a = await fetch(r, o)), !a.ok) {
-      const d = new Error(`Sheets API ${t} ${e} → ${a.status}`);
-      throw d.status = a.status, d;
+    const a = { method: t, headers: c };
+    s && (a.body = JSON.stringify(s));
+    let o = await fetch(r, a);
+    if (o.status === 401 && this._authMode !== "static" && this._authMode !== "apikey" && (this._tokenExpiry = 0, await this._ensureToken(), this._accessToken && (a.headers.Authorization = `Bearer ${this._accessToken}`), o = await fetch(r, a)), !o.ok) {
+      const d = new Error(`Sheets API ${t} ${e} → ${o.status}`);
+      throw d.status = o.status, d;
     }
-    const l = await a.text();
-    return l ? JSON.parse(l) : {};
+    const h = await o.text();
+    return h ? JSON.parse(h) : {};
   }
   async _ensureToken() {
     if (this._authMode === "apikey" || this._accessToken && Date.now() < this._tokenExpiry - 5e3) return;
     const e = _e(this._driveConfig);
     if (e) {
-      const t = Q.get(e);
+      const t = Y.get(e);
       if (t && Date.now() < t.expiry - 5e3) {
         this._accessToken = t.token, this._tokenExpiry = t.expiry;
         return;
       }
     }
-    this._authMode === "refresh" ? await this._refreshAccessToken() : this._authMode === "service" ? await this._mintServiceAccountToken() : this._authMode === "client" && await this._requestClientToken(), e && this._accessToken && Q.set(e, { token: this._accessToken, expiry: this._tokenExpiry });
+    this._authMode === "refresh" ? await this._refreshAccessToken() : this._authMode === "service" ? await this._mintServiceAccountToken() : this._authMode === "client" && await this._requestClientToken(), e && this._accessToken && Y.set(e, { token: this._accessToken, expiry: this._tokenExpiry });
   }
   async _refreshAccessToken() {
     const e = new URLSearchParams({
@@ -568,7 +568,7 @@ class p {
       client_id: this._clientId,
       client_secret: this._clientSecret,
       refresh_token: this._refreshToken
-    }), t = await fetch(Y, {
+    }), t = await fetch(X, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: e.toString()
@@ -582,13 +582,13 @@ class p {
     const e = Math.floor(Date.now() / 1e3), t = {
       iss: this._serviceAccount.client_email,
       scope: ue,
-      aud: Y,
+      aud: X,
       iat: e,
       exp: e + 3600
-    }, s = await p._signJwt(t, this._serviceAccount.private_key, this), n = new URLSearchParams({
+    }, s = await m._signJwt(t, this._serviceAccount.private_key, this), n = new URLSearchParams({
       grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
       assertion: s
-    }), i = await fetch(Y, {
+    }), i = await fetch(X, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: n.toString()
@@ -599,7 +599,7 @@ class p {
     this._accessToken = r.access_token, this._tokenExpiry = Date.now() + (r.expires_in ? r.expires_in * 1e3 - 3e5 : 3300 * 1e3);
   }
   async _requestClientToken() {
-    return await p._loadGisScript(), this._gisTokenClient || (this._gisTokenClient = google.accounts.oauth2.initTokenClient({
+    return await m._loadGisScript(), this._gisTokenClient || (this._gisTokenClient = google.accounts.oauth2.initTokenClient({
       client_id: this._clientId,
       scope: ue,
       callback: (e) => {
@@ -616,7 +616,7 @@ class p {
   static _loadGisScript() {
     return fe && typeof google < "u" && google.accounts ? Promise.resolve() : J || (J = new Promise((e, t) => {
       const s = document.createElement("script");
-      s.src = He, s.async = !0, s.onload = () => {
+      s.src = Fe, s.async = !0, s.onload = () => {
         fe = !0, e();
       }, s.onerror = () => t(new Error("[DriveSignal] Failed to load Google Identity Services script")), document.head.appendChild(s);
     }), J);
@@ -637,7 +637,7 @@ class p {
   }
   async _writeCell(e, t) {
     if (this._authMode === "raw") {
-      const { row: s, col: n } = p._parseRange(e);
+      const { row: s, col: n } = m._parseRange(e);
       return this._rawWriteCell(s, n, t);
     }
     await this._sheetsRequest(
@@ -648,7 +648,7 @@ class p {
   }
   async _appendToColumn(e, t) {
     if (this._authMode === "raw") {
-      const i = p._colIndex(e), r = this._myWriteRow;
+      const i = m._colIndex(e), r = this._myWriteRow;
       return this._myWriteRow++, this._rawWriteCell(r, i, t);
     }
     const s = this._myWriteRow;
@@ -670,7 +670,7 @@ class p {
       commands: [[i, r]],
       sid: this._rawSid,
       reqId: this._rawReqId
-    }]), o = new URLSearchParams({
+    }]), a = new URLSearchParams({
       id: this.spreadsheetId,
       sid: this._rawSid,
       vc: "1",
@@ -685,12 +685,12 @@ class p {
       usp: "drive_web",
       cros_files: "false",
       nded: "false"
-    }), a = `https://docs.google.com/spreadsheets/u/0/d/${this.spreadsheetId}/save?${o}`, l = new FormData();
-    l.append("rev", String(this._rawRev)), l.append("bundles", c);
+    }), o = `https://docs.google.com/spreadsheets/u/0/d/${this.spreadsheetId}/save?${a}`, h = new FormData();
+    h.append("rev", String(this._rawRev)), h.append("bundles", c);
     try {
-      await fetch(a, {
+      await fetch(o, {
         method: "POST",
-        body: l,
+        body: h,
         credentials: "include",
         mode: "no-cors"
       });
@@ -704,7 +704,7 @@ class p {
         delete window[t], e([]);
       }, 8e3);
       window[t] = (i) => {
-        clearTimeout(s), delete window[t], e(p._parseGvizTable(i));
+        clearTimeout(s), delete window[t], e(m._parseGvizTable(i));
       };
       const n = document.createElement("script");
       n.src = `https://docs.google.com/spreadsheets/d/${this.spreadsheetId}/gviz/tq?tqx=responseHandler:${t}&gid=${this._rawGid}&headers=0&tq=${encodeURIComponent("SELECT *")}`, n.onerror = () => {
@@ -724,7 +724,7 @@ class p {
   static _parseRange(e) {
     const s = (e.includes("!") ? e.split("!")[1] : e).match(/^([A-Z]+)(\d+)$/);
     return s ? {
-      col: p._colIndex(s[1]),
+      col: m._colIndex(s[1]),
       row: parseInt(s[2], 10) - 1
     } : { row: 0, col: 0 };
   }
@@ -739,16 +739,16 @@ class p {
     return t;
   }
   static async _signJwt(e, t, s) {
-    s._signingKey || (s._signingKey = await p._importPem(t));
+    s._signingKey || (s._signingKey = await m._importPem(t));
     const n = { alg: "RS256", typ: "JWT" }, i = [
-      p._b64url(JSON.stringify(n)),
-      p._b64url(JSON.stringify(e))
+      m._b64url(JSON.stringify(n)),
+      m._b64url(JSON.stringify(e))
     ], r = new TextEncoder().encode(i.join(".")), c = await crypto.subtle.sign(
       { name: "RSASSA-PKCS1-v1_5" },
       s._signingKey,
       r
     );
-    return i.push(p._b64urlBuf(c)), i.join(".");
+    return i.push(m._b64urlBuf(c)), i.join(".");
   }
   static async _importPem(e) {
     const t = e.replace(/-----BEGIN (?:RSA )?PRIVATE KEY-----/, "").replace(/-----END (?:RSA )?PRIVATE KEY-----/, "").replace(/\s/g, ""), s = atob(t), n = new Uint8Array(s.length);
@@ -930,7 +930,7 @@ class Te {
     e.score = Math.max(0.01, t * 0.4 + s * 0.35 + n * 0.25);
   }
 }
-class Fe {
+class qe {
   constructor({ senders: e = [], linkIds: t = [], monitor: s = null } = {}) {
     this.senders = e, this.linkIds = t, this.monitor = s || new Te();
     for (const n of this.linkIds)
@@ -1003,24 +1003,24 @@ class Fe {
   _buildSendPlan(e) {
     const t = new Array(e), s = this._wrr.weights, n = /* @__PURE__ */ new Map();
     let i = 0;
-    for (let o = 0; o < this.linkIds.length; o++) {
-      const a = this.linkIds[o], l = s.get(a) || 1 / this.linkIds.length, d = Math.round(l * e);
-      n.set(o, d), i += d;
+    for (let a = 0; a < this.linkIds.length; a++) {
+      const o = this.linkIds[a], h = s.get(o) || 1 / this.linkIds.length, d = Math.round(h * e);
+      n.set(a, d), i += d;
     }
     if (i < e) {
-      const o = this._pickBestSender();
-      n.set(o, (n.get(o) || 0) + (e - i));
+      const a = this._pickBestSender();
+      n.set(a, (n.get(a) || 0) + (e - i));
     } else if (i > e)
-      for (let o = this.linkIds.length - 1; o >= 0 && i > e; o--) {
-        const a = n.get(o) || 0, l = Math.min(a, i - e);
-        n.set(o, a - l), i -= l;
+      for (let a = this.linkIds.length - 1; a >= 0 && i > e; a--) {
+        const o = n.get(a) || 0, h = Math.min(o, i - e);
+        n.set(a, o - h), i -= h;
       }
     let r = 0;
     const c = new Map(n);
     for (; r < e; )
-      for (let o = 0; o < this.linkIds.length && r < e; o++) {
-        const a = c.get(o) || 0;
-        a > 0 && (t[r++] = o, c.set(o, a - 1));
+      for (let a = 0; a < this.linkIds.length && r < e; a++) {
+        const o = c.get(a) || 0;
+        o > 0 && (t[r++] = a, c.set(a, o - 1));
       }
     return t;
   }
@@ -1054,53 +1054,53 @@ const K = 13, Ie = 64 * 1024, L = {
   PROBE: 8,
   META: 16
 };
-function ie({ transferId: h, chunkIndex: e, totalChunks: t, flags: s, payload: n }) {
+function ie({ transferId: l, chunkIndex: e, totalChunks: t, flags: s, payload: n }) {
   const i = n ? n instanceof Uint8Array ? n : new Uint8Array(n) : new Uint8Array(0), r = new ArrayBuffer(K + i.byteLength), c = new DataView(r);
-  return c.setUint32(0, h, !0), c.setUint32(4, e, !0), c.setUint32(8, t, !0), c.setUint8(12, s), i.byteLength > 0 && new Uint8Array(r, K).set(i), r;
+  return c.setUint32(0, l, !0), c.setUint32(4, e, !0), c.setUint32(8, t, !0), c.setUint8(12, s), i.byteLength > 0 && new Uint8Array(r, K).set(i), r;
 }
-function je(h) {
-  const e = new DataView(h);
+function je(l) {
+  const e = new DataView(l);
   return {
     transferId: e.getUint32(0, !0),
     chunkIndex: e.getUint32(4, !0),
     totalChunks: e.getUint32(8, !0),
     flags: e.getUint8(12),
-    payload: h.byteLength > K ? new Uint8Array(h, K) : null
+    payload: l.byteLength > K ? new Uint8Array(l, K) : null
   };
 }
-function me(h, e, t = Ie) {
-  const s = new Uint8Array(h), n = Math.ceil(s.byteLength / t), i = [];
+function me(l, e, t = Ie) {
+  const s = new Uint8Array(l), n = Math.ceil(s.byteLength / t), i = [];
   for (let r = 0; r < n; r++) {
-    const c = r * t, o = Math.min(c + t, s.byteLength), a = s.slice(c, o);
+    const c = r * t, a = Math.min(c + t, s.byteLength), o = s.slice(c, a);
     i.push(
       ie({
         transferId: e,
         chunkIndex: r,
         totalChunks: n,
         flags: L.DATA,
-        payload: a
+        payload: o
       })
     );
   }
   return i;
 }
-function ze(h, e) {
+function ze(l, e) {
   const t = JSON.stringify(e), n = new TextEncoder().encode(t);
   return ie({
-    transferId: h,
+    transferId: l,
     chunkIndex: 0,
     totalChunks: 0,
     flags: L.META,
     payload: n
   });
 }
-function Ge(h) {
+function Ge(l) {
   const e = new TextDecoder();
-  return JSON.parse(e.decode(h));
+  return JSON.parse(e.decode(l));
 }
-function Je(h) {
+function Je(l) {
   const e = new Uint8Array(8);
-  return new DataView(e.buffer).setFloat64(0, h, !0), ie({
+  return new DataView(e.buffer).setFloat64(0, l, !0), ie({
     transferId: 0,
     chunkIndex: 0,
     totalChunks: 0,
@@ -1108,11 +1108,11 @@ function Je(h) {
     payload: e
   });
 }
-function Ke(h) {
-  return new DataView(h.buffer, h.byteOffset, h.byteLength).getFloat64(0, !0);
+function Ke(l) {
+  return new DataView(l.buffer, l.byteOffset, l.byteLength).getFloat64(0, !0);
 }
-const ge = 1, we = 2, Ve = new TextEncoder(), Ye = new TextDecoder();
-class Qe {
+const ge = 1, we = 2, Ve = new TextEncoder(), Xe = new TextDecoder();
+class Ye {
   constructor(e) {
     this._send = e, this._listeners = {};
   }
@@ -1142,7 +1142,7 @@ class Qe {
   handleIncoming(e) {
     const t = new Uint8Array(e), s = t[0];
     if (s === ge) {
-      const n = Ye.decode(t.slice(1));
+      const n = Xe.decode(t.slice(1));
       this._emit("text", n);
     } else s === we && this._emit("binary", e.slice(1));
   }
@@ -1154,30 +1154,30 @@ const y = {
   END: 4,
   ERROR: 5
 }, $ = new TextEncoder(), W = new TextDecoder();
-function Xe(h, e, t, s = {}, n = null) {
-  const i = $.encode(e), r = $.encode(t), c = $.encode(JSON.stringify(s)), o = n ? new Uint8Array(n) : new Uint8Array(0), a = 6 + i.length + 2 + r.length + 4 + c.length + o.length, l = new ArrayBuffer(a), d = new DataView(l), f = new Uint8Array(l);
-  let u = 0;
-  return d.setUint8(u, y.REQUEST), u += 1, d.setUint32(u, h, !0), u += 4, d.setUint8(u, i.length), u += 1, f.set(i, u), u += i.length, d.setUint16(u, r.length, !0), u += 2, f.set(r, u), u += r.length, d.setUint32(u, c.length, !0), u += 4, f.set(c, u), u += c.length, o.length > 0 && f.set(o, u), l;
+function Qe(l, e, t, s = {}, n = null) {
+  const i = $.encode(e), r = $.encode(t), c = $.encode(JSON.stringify(s)), a = n ? new Uint8Array(n) : new Uint8Array(0), o = 6 + i.length + 2 + r.length + 4 + c.length + a.length, h = new ArrayBuffer(o), d = new DataView(h), u = new Uint8Array(h);
+  let f = 0;
+  return d.setUint8(f, y.REQUEST), f += 1, d.setUint32(f, l, !0), f += 4, d.setUint8(f, i.length), f += 1, u.set(i, f), f += i.length, d.setUint16(f, r.length, !0), f += 2, u.set(r, f), f += r.length, d.setUint32(f, c.length, !0), f += 4, u.set(c, f), f += c.length, a.length > 0 && u.set(a, f), h;
 }
-function ye(h, e, t = {}) {
+function ye(l, e, t = {}) {
   const s = $.encode(JSON.stringify(t)), n = 11 + s.length, i = new ArrayBuffer(n), r = new DataView(i), c = new Uint8Array(i);
-  let o = 0;
-  return r.setUint8(o, y.RESPONSE), o += 1, r.setUint32(o, h, !0), o += 4, r.setUint16(o, e, !0), o += 2, r.setUint32(o, s.length, !0), o += 4, c.set(s, o), i;
+  let a = 0;
+  return r.setUint8(a, y.RESPONSE), a += 1, r.setUint32(a, l, !0), a += 4, r.setUint16(a, e, !0), a += 2, r.setUint32(a, s.length, !0), a += 4, c.set(s, a), i;
 }
-function X(h, e, t) {
+function Q(l, e, t) {
   const s = new Uint8Array(t), n = new ArrayBuffer(9 + s.length), i = new DataView(n);
-  return new Uint8Array(n).set(s, 9), i.setUint8(0, y.BODY), i.setUint32(1, h, !0), i.setUint32(5, e, !0), n;
+  return new Uint8Array(n).set(s, 9), i.setUint8(0, y.BODY), i.setUint32(1, l, !0), i.setUint32(5, e, !0), n;
 }
-function Se(h, e = 0) {
+function Se(l, e = 0) {
   const t = new ArrayBuffer(9), s = new DataView(t);
-  return s.setUint8(0, y.END), s.setUint32(1, h, !0), s.setUint32(5, e, !0), t;
+  return s.setUint8(0, y.END), s.setUint32(1, l, !0), s.setUint32(5, e, !0), t;
 }
-function Z(h, e) {
+function Z(l, e) {
   const t = $.encode(e), s = new ArrayBuffer(5 + t.length), n = new DataView(s);
-  return new Uint8Array(s).set(t, 5), n.setUint8(0, y.ERROR), n.setUint32(1, h, !0), s;
+  return new Uint8Array(s).set(t, 5), n.setUint8(0, y.ERROR), n.setUint32(1, l, !0), s;
 }
-function Ae(h) {
-  const e = new DataView(h), t = new Uint8Array(h), s = e.getUint8(0), n = e.getUint32(1, !0);
+function Ae(l) {
+  const e = new DataView(l), t = new Uint8Array(l), s = e.getUint8(0), n = e.getUint32(1, !0);
   switch (s) {
     case y.REQUEST: {
       let i = 5;
@@ -1185,16 +1185,16 @@ function Ae(h) {
       i += 1;
       const c = W.decode(t.slice(i, i + r));
       i += r;
-      const o = e.getUint16(i, !0);
+      const a = e.getUint16(i, !0);
       i += 2;
-      const a = W.decode(t.slice(i, i + o));
-      i += o;
-      const l = e.getUint32(i, !0);
+      const o = W.decode(t.slice(i, i + a));
+      i += a;
+      const h = e.getUint32(i, !0);
       i += 4;
-      const d = JSON.parse(W.decode(t.slice(i, i + l)));
-      i += l;
-      const f = i < h.byteLength ? h.slice(i) : null;
-      return { type: s, requestId: n, method: c, url: a, headers: d, body: f };
+      const d = JSON.parse(W.decode(t.slice(i, i + h)));
+      i += h;
+      const u = i < l.byteLength ? l.slice(i) : null;
+      return { type: s, requestId: n, method: c, url: o, headers: d, body: u };
     }
     case y.RESPONSE: {
       let i = 5;
@@ -1202,15 +1202,15 @@ function Ae(h) {
       i += 2;
       const c = e.getUint32(i, !0);
       i += 4;
-      const o = JSON.parse(W.decode(t.slice(i, i + c)));
-      return { type: s, requestId: n, status: r, headers: o };
+      const a = JSON.parse(W.decode(t.slice(i, i + c)));
+      return { type: s, requestId: n, status: r, headers: a };
     }
     case y.BODY: {
       const i = e.getUint32(5, !0);
-      return { type: s, requestId: n, seqNum: i, data: h.slice(9) };
+      return { type: s, requestId: n, seqNum: i, data: l.slice(9) };
     }
     case y.END:
-      return { type: s, requestId: n, seqCount: h.byteLength >= 9 ? e.getUint32(5, !0) : 0 };
+      return { type: s, requestId: n, seqCount: l.byteLength >= 9 ? e.getUint32(5, !0) : 0 };
     case y.ERROR:
       return { type: s, requestId: n, message: W.decode(t.slice(5)) };
     default:
@@ -1260,19 +1260,19 @@ class tt {
     if (!t) return;
     const s = Array.isArray(t) ? t : [t], n = this._parseOrigin(e), i = Date.now();
     for (const r of s) {
-      const c = r.split(";").map((_) => _.trim()), [o] = c, a = o.indexOf("=");
-      if (a < 0) continue;
-      const l = o.slice(0, a).trim(), d = o.slice(a + 1).trim();
-      let f = n.hostname, u = "/", g = null, b = !1, M = n.protocol === "https:";
-      for (let _ = 1; _ < c.length; _++) {
-        const [P, S = ""] = c[_].split("=").map((A) => A.trim()), m = P.toLowerCase();
-        m === "domain" ? f = S.replace(/^\./, "") : m === "path" ? u = S || "/" : m === "expires" ? g = new Date(S).getTime() : m === "max-age" ? g = i + parseInt(S, 10) * 1e3 : m === "httponly" ? b = !0 : m === "secure" && (M = !0);
+      const c = r.split(";").map((p) => p.trim()), [a] = c, o = a.indexOf("=");
+      if (o < 0) continue;
+      const h = a.slice(0, o).trim(), d = a.slice(o + 1).trim();
+      let u = n.hostname, f = "/", _ = null, S = !1, x = n.protocol === "https:";
+      for (let p = 1; p < c.length; p++) {
+        const [P, C = ""] = c[p].split("=").map((A) => A.trim()), g = P.toLowerCase();
+        g === "domain" ? u = C.replace(/^\./, "") : g === "path" ? f = C || "/" : g === "expires" ? _ = new Date(C).getTime() : g === "max-age" ? _ = i + parseInt(C, 10) * 1e3 : g === "httponly" ? S = !0 : g === "secure" && (x = !0);
       }
-      if (g !== null && g < i) {
-        this._cookies = this._cookies.filter((_) => !(_.name === l && _.domain === f && _.path === u));
+      if (_ !== null && _ < i) {
+        this._cookies = this._cookies.filter((p) => !(p.name === h && p.domain === u && p.path === f));
         continue;
       }
-      const R = this._cookies.findIndex((_) => _.name === l && _.domain === f && _.path === u), T = { name: l, value: d, domain: f, path: u, expires: g, httpOnly: b, secure: M };
+      const R = this._cookies.findIndex((p) => p.name === h && p.domain === u && p.path === f), T = { name: h, value: d, domain: u, path: f, expires: _, httpOnly: S, secure: x };
       R >= 0 ? this._cookies[R] = T : this._cookies.push(T);
     }
   }
@@ -1304,7 +1304,96 @@ class tt {
 }
 class st {
   constructor(e) {
-    this._send = e, this._pending = /* @__PURE__ */ new Map(), this.cookieJar = new tt();
+    this._send = e, this._pending = /* @__PURE__ */ new Map(), this.cookieJar = new tt(), this._intercepted = !1, this._origFetch = null, this._origXhrOpen = null, this._origXhrSend = null, this._interceptTarget = null, this._interceptFilter = null;
+  }
+  intercept(e = globalThis, t = null) {
+    this._intercepted && this.release(), this._interceptTarget = e, this._interceptFilter = t, this._intercepted = !0, this._origFetch = e.fetch;
+    const s = this;
+    e.fetch = function(r, c) {
+      let a;
+      if (r instanceof Request ? a = r.url : a = String(r), s._shouldIntercept(a)) {
+        const o = {};
+        if (r instanceof Request && (o.method = r.method, o.headers = {}, r.headers.forEach((h, d) => {
+          o.headers[d] = h;
+        }), o.credentials = r.credentials, o.mode = r.mode, o.redirect = r.redirect, o.referrer = r.referrer, o.referrerPolicy = r.referrerPolicy, r.body && (o.body = r.body)), c && Object.assign(o, c), c != null && c.headers) {
+          const h = {};
+          if (o.headers)
+            for (const [d, u] of Object.entries(o.headers)) h[d] = u;
+          if (c.headers instanceof Headers)
+            c.headers.forEach((d, u) => {
+              h[u] = d;
+            });
+          else if (Array.isArray(c.headers))
+            for (const [d, u] of c.headers) h[d] = u;
+          else
+            Object.assign(h, c.headers);
+          o.headers = h;
+        }
+        return s.fetch(a, o);
+      }
+      return s._origFetch.call(e, r, c);
+    };
+    const n = e.XMLHttpRequest;
+    if (n) {
+      this._origXhrOpen = n.prototype.open, this._origXhrSend = n.prototype.send;
+      const i = this._origXhrOpen, r = this._origXhrSend;
+      n.prototype.open = function(a, o, ...h) {
+        return this._speedrtcMethod = a, this._speedrtcUrl = String(o), this._speedrtcHeaders = {}, this._speedrtcAsync = h[0] !== !1, i.call(this, a, o, ...h);
+      };
+      const c = n.prototype.setRequestHeader;
+      this._origXhrSetHeader = c, n.prototype.setRequestHeader = function(a, o) {
+        return this._speedrtcHeaders && (this._speedrtcHeaders[a] = o), c.call(this, a, o);
+      }, n.prototype.send = function(a) {
+        const o = this._speedrtcUrl;
+        if (o && s._shouldIntercept(o)) {
+          const h = this, d = {
+            method: this._speedrtcMethod || "GET",
+            headers: this._speedrtcHeaders || {}
+          };
+          a != null && (d.body = a), s.fetch(o, d).then(async (u) => {
+            Object.defineProperty(h, "status", { value: u.status, writable: !1, configurable: !0 }), Object.defineProperty(h, "statusText", { value: u.statusText, writable: !1, configurable: !0 });
+            const f = await u.text();
+            Object.defineProperty(h, "responseText", { value: f, writable: !1, configurable: !0 }), Object.defineProperty(h, "response", { value: f, writable: !1, configurable: !0 }), Object.defineProperty(h, "readyState", { value: 4, writable: !1, configurable: !0 });
+            const _ = [];
+            u.headers.forEach((S, x) => _.push(`${x}: ${S}`)), Object.defineProperty(h, "_speedrtcRespHeaders", { value: _.join(`\r
+`), configurable: !0 }), h.getAllResponseHeaders = () => h._speedrtcRespHeaders, h.getResponseHeader = (S) => u.headers.get(S), h.onreadystatechange && h.onreadystatechange(new Event("readystatechange")), h.onload && h.onload(new Event("load")), h.dispatchEvent(new Event("readystatechange")), h.dispatchEvent(new Event("load")), h.dispatchEvent(new Event("loadend"));
+          }).catch((u) => {
+            Object.defineProperty(h, "readyState", { value: 4, writable: !1, configurable: !0 }), Object.defineProperty(h, "status", { value: 0, writable: !1, configurable: !0 }), h.onerror && h.onerror(new Event("error")), h.dispatchEvent(new Event("error")), h.dispatchEvent(new Event("loadend"));
+          });
+          return;
+        }
+        return r.call(this, a);
+      };
+    }
+  }
+  release() {
+    if (!this._intercepted) return;
+    const e = this._interceptTarget;
+    this._origFetch && (e.fetch = this._origFetch);
+    const t = e.XMLHttpRequest;
+    t && (this._origXhrOpen && (t.prototype.open = this._origXhrOpen), this._origXhrSend && (t.prototype.send = this._origXhrSend), this._origXhrSetHeader && (t.prototype.setRequestHeader = this._origXhrSetHeader)), this._origFetch = null, this._origXhrOpen = null, this._origXhrSend = null, this._origXhrSetHeader = null, this._interceptTarget = null, this._interceptFilter = null, this._intercepted = !1;
+  }
+  _shouldIntercept(e) {
+    var t;
+    if (!e) return !1;
+    try {
+      const s = new URL(e, (t = globalThis.location) == null ? void 0 : t.href);
+      if (s.protocol !== "http:" && s.protocol !== "https:") return !1;
+      if (this._interceptFilter) {
+        if (typeof this._interceptFilter == "function") return this._interceptFilter(s.href);
+        if (Array.isArray(this._interceptFilter))
+          return this._interceptFilter.some((n) => {
+            const i = s.hostname;
+            return i === n || i.endsWith("." + n);
+          });
+      }
+      return globalThis.location ? s.origin !== globalThis.location.origin : !0;
+    } catch {
+      return !1;
+    }
+  }
+  createInterceptScript() {
+    return "<script>(function(){var _of=window.fetch;window.fetch=function(i,o){try{var u=new URL(typeof i==='string'?i:i.url,location.href);if(u.origin!==location.origin){return window.parent.__speedrtc_proxy_fetch(u.href,o||{});}}catch(e){}return _of.call(window,i,o);};})()<\/script>";
   }
   async fetch(e, t = {}) {
     const s = et++, n = (t.method || "GET").toUpperCase(), i = Object.assign({}, t.headers || {});
@@ -1321,53 +1410,53 @@ class st {
       else if (t.body instanceof Blob)
         r = await t.body.arrayBuffer(), !i["content-type"] && t.body.type && (i["content-type"] = t.body.type);
       else if (typeof FormData < "u" && t.body instanceof FormData) {
-        const a = new Request("/", { method: "POST", body: t.body });
-        r = await a.arrayBuffer(), i["content-type"] || (i["content-type"] = a.headers.get("content-type"));
+        const o = new Request("/", { method: "POST", body: t.body });
+        r = await o.arrayBuffer(), i["content-type"] || (i["content-type"] = o.headers.get("content-type"));
       } else if (typeof ReadableStream < "u" && t.body instanceof ReadableStream) {
-        const a = t.body.getReader(), l = [];
+        const o = t.body.getReader(), h = [];
         let d = 0;
         for (; ; ) {
-          const { done: g, value: b } = await a.read();
-          if (g) break;
-          l.push(b), d += b.byteLength;
+          const { done: _, value: S } = await o.read();
+          if (_) break;
+          h.push(S), d += S.byteLength;
         }
-        const f = new Uint8Array(d);
-        let u = 0;
-        for (const g of l)
-          f.set(g, u), u += g.byteLength;
-        r = f.buffer;
+        const u = new Uint8Array(d);
+        let f = 0;
+        for (const _ of h)
+          u.set(_, f), f += _.byteLength;
+        r = u.buffer;
       }
     }
     t.redirect && (i["x-proxy-opt-redirect"] = t.redirect), t.cache && (i["x-proxy-opt-cache"] = t.cache), t.mode && (i["x-proxy-opt-mode"] = t.mode), t.referrer && (i["x-proxy-opt-referrer"] = t.referrer), t.referrerPolicy && (i["x-proxy-opt-referrerpolicy"] = t.referrerPolicy), t.credentials && (i["x-proxy-opt-credentials"] = t.credentials);
     try {
-      const a = new URL(e).origin, l = this.cookieJar.get(e);
-      l && !i.cookie && (i.cookie = l);
+      const o = new URL(e).origin, h = this.cookieJar.get(e);
+      h && !i.cookie && (i.cookie = h);
     } catch {
     }
-    const c = t.timeout || 3e4, o = Xe(s, n, e, i, r);
-    return new Promise((a, l) => {
+    const c = t.timeout || 3e4, a = Qe(s, n, e, i, r);
+    return new Promise((o, h) => {
       const d = t.signal;
-      let f = !1;
-      const u = setTimeout(() => {
-        f || (f = !0, this._pending.delete(s), l(new DOMException(`Proxy request timed out: ${n} ${e}`, "TimeoutError")));
-      }, c), g = () => {
-        f || (f = !0, clearTimeout(u), this._pending.delete(s), l(d.reason || new DOMException("The operation was aborted.", "AbortError")));
+      let u = !1;
+      const f = setTimeout(() => {
+        u || (u = !0, this._pending.delete(s), h(new DOMException(`Proxy request timed out: ${n} ${e}`, "TimeoutError")));
+      }, c), _ = () => {
+        u || (u = !0, clearTimeout(f), this._pending.delete(s), h(d.reason || new DOMException("The operation was aborted.", "AbortError")));
       };
       if (d) {
         if (d.aborted) {
-          g();
+          _();
           return;
         }
-        d.addEventListener("abort", g, { once: !0 });
+        d.addEventListener("abort", _, { once: !0 });
       }
       this._pending.set(s, {
-        resolve: (b) => {
-          d && d.removeEventListener("abort", g), a(b);
+        resolve: (S) => {
+          d && d.removeEventListener("abort", _), o(S);
         },
-        reject: (b) => {
-          d && d.removeEventListener("abort", g), l(b);
+        reject: (S) => {
+          d && d.removeEventListener("abort", _), h(S);
         },
-        timeout: u,
+        timeout: f,
         url: e,
         status: 0,
         headers: {},
@@ -1375,7 +1464,7 @@ class st {
         totalBodySize: 0,
         seqCount: -1,
         endReceived: !1
-      }), this._send(o).catch(l);
+      }), this._send(a).catch(h);
     });
   }
   handleIncoming(e) {
@@ -1397,20 +1486,20 @@ class st {
       }
   }
   _resolveRequest(e, t) {
-    clearTimeout(t.timeout), this._pending.delete(e), t.bodyChunks.sort((o, a) => o.seqNum - a.seqNum);
+    clearTimeout(t.timeout), this._pending.delete(e), t.bodyChunks.sort((a, o) => a.seqNum - o.seqNum);
     const s = new Uint8Array(t.totalBodySize);
     let n = 0;
-    for (const o of t.bodyChunks)
-      s.set(o.data, n), n += o.data.length;
+    for (const a of t.bodyChunks)
+      s.set(a.data, n), n += a.data.length;
     const i = new Ze(t.headers), r = i.get("x-speedrtc-compressed") === "gzip", c = i.get("x-speedrtc-set-cookie");
     if (c)
       try {
-        const o = JSON.parse(c);
-        i._map["set-cookie"] = o.join(`
+        const a = JSON.parse(c);
+        i._map["set-cookie"] = a.join(`
 `);
         try {
-          const a = new URL(t.url).origin;
-          this.cookieJar.store(a, o);
+          const o = new URL(t.url).origin;
+          this.cookieJar.store(o, a);
         } catch {
         }
       } catch {
@@ -1426,17 +1515,17 @@ class st {
       const n = new DecompressionStream("gzip"), i = n.writable.getWriter(), r = n.readable.getReader();
       i.write(new Uint8Array(e)), i.close();
       const c = [];
-      let o = 0;
+      let a = 0;
       for (; ; ) {
-        const { done: d, value: f } = await r.read();
+        const { done: d, value: u } = await r.read();
         if (d) break;
-        c.push(f), o += f.byteLength;
+        c.push(u), a += u.byteLength;
       }
-      const a = new Uint8Array(o);
-      let l = 0;
+      const o = new Uint8Array(a);
+      let h = 0;
       for (const d of c)
-        a.set(d, l), l += d.byteLength;
-      t.resolve(new O(t.status, s, a.buffer));
+        o.set(d, h), h += d.byteLength;
+      t.resolve(new O(t.status, s, o.buffer));
     } catch {
       t.resolve(new O(t.status, s, e));
     }
@@ -1525,41 +1614,41 @@ class ht {
       return;
     }
     const { requestId: s, method: n, url: i, headers: r, body: c } = t;
-    let o = 0;
+    let a = 0;
     if (!this._isDomainAllowed(i)) {
       await this._send(Z(s, "Domain not allowed"));
       return;
     }
     try {
-      const a = {}, l = {};
+      const o = {}, h = {};
       for (const [w, I] of Object.entries(r))
-        w.startsWith("x-proxy-opt-") ? l[w.slice(12)] = I : a[w] = I;
-      const d = { method: n, headers: a };
-      c && n !== "GET" && n !== "HEAD" && (d.body = c), l.redirect && (d.redirect = l.redirect), l.cache && (d.cache = l.cache), l.mode && (d.mode = l.mode), l.referrer && (d.referrer = l.referrer), l.referrerpolicy && (d.referrerPolicy = l.referrerpolicy), l.credentials && (d.credentials = l.credentials);
-      const f = new URL(i), u = f.origin, g = f.host, b = a.origin || "";
-      let M;
+        w.startsWith("x-proxy-opt-") ? h[w.slice(12)] = I : o[w] = I;
+      const d = { method: n, headers: o };
+      c && n !== "GET" && n !== "HEAD" && (d.body = c), h.redirect && (d.redirect = h.redirect), h.cache && (d.cache = h.cache), h.mode && (d.mode = h.mode), h.referrer && (d.referrer = h.referrer), h.referrerpolicy && (d.referrerPolicy = h.referrerpolicy), h.credentials && (d.credentials = h.credentials);
+      const u = new URL(i), f = u.origin, _ = u.host, S = o.origin || "";
+      let x;
       try {
-        const w = new URL(b);
-        M = w.origin === u ? "same-origin" : w.hostname.endsWith("." + g) || g.endsWith("." + w.hostname) ? "same-site" : "cross-site";
+        const w = new URL(S);
+        x = w.origin === f ? "same-origin" : w.hostname.endsWith("." + _) || _.endsWith("." + w.hostname) ? "same-site" : "cross-site";
       } catch {
-        M = "none";
+        x = "none";
       }
-      const R = (a.accept || "").toLowerCase();
-      let T, _;
-      R.includes("text/html") ? (T = "document", _ = "navigate") : R.includes("application/json") || R.startsWith("*/*") ? (T = "empty", _ = "cors") : R.includes("image/") ? (T = "image", _ = "no-cors") : R.includes("text/css") ? (T = "style", _ = "cors") : R.includes("application/javascript") || R.includes("text/javascript") ? (T = "script", _ = "no-cors") : R.includes("font/") ? (T = "font", _ = "cors") : (T = "empty", _ = "cors");
-      for (const w of at) delete a[w];
-      a.host = g, a.origin || (a.origin = u), a.referer || (a.referer = f.href), a["user-agent"] || (a["user-agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"), a.accept || (a.accept = "*/*"), a["accept-language"] || (a["accept-language"] = "en-US,en;q=0.9"), a["accept-encoding"] = "identity", a["sec-fetch-site"] = M, a["sec-fetch-mode"] = _, a["sec-fetch-dest"] = T, a["sec-ch-ua"] = '"Google Chrome";v="124", "Chromium";v="124", "Not-A.Brand";v="99"', a["sec-ch-ua-mobile"] = "?0", a["sec-ch-ua-platform"] = '"Windows"', c && (a["content-length"] = String(c.byteLength || 0));
-      const P = n === "GET" || n === "HEAD" ? `${n}:${i}` : null, S = P ? B.get(P) : null;
-      if (S) {
-        const w = a["if-none-match"], I = a["if-modified-since"];
-        if (w && w === S.etag || I && S.lastModified && new Date(I) >= new Date(S.lastModified)) {
-          await this._send(ye(s, 304, { etag: S.etag || "", "last-modified": S.lastModified || "" })), await this._send(Se(s));
+      const R = (o.accept || "").toLowerCase();
+      let T, p;
+      R.includes("text/html") ? (T = "document", p = "navigate") : R.includes("application/json") || R.startsWith("*/*") ? (T = "empty", p = "cors") : R.includes("image/") ? (T = "image", p = "no-cors") : R.includes("text/css") ? (T = "style", p = "cors") : R.includes("application/javascript") || R.includes("text/javascript") ? (T = "script", p = "no-cors") : R.includes("font/") ? (T = "font", p = "cors") : (T = "empty", p = "cors");
+      for (const w of at) delete o[w];
+      o.host = _, o.origin || (o.origin = f), o.referer || (o.referer = u.href), o["user-agent"] || (o["user-agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"), o.accept || (o.accept = "*/*"), o["accept-language"] || (o["accept-language"] = "en-US,en;q=0.9"), o["accept-encoding"] = "identity", o["sec-fetch-site"] = x, o["sec-fetch-mode"] = p, o["sec-fetch-dest"] = T, o["sec-ch-ua"] = '"Google Chrome";v="124", "Chromium";v="124", "Not-A.Brand";v="99"', o["sec-ch-ua-mobile"] = "?0", o["sec-ch-ua-platform"] = '"Windows"', c && (o["content-length"] = String(c.byteLength || 0));
+      const P = n === "GET" || n === "HEAD" ? `${n}:${i}` : null, C = P ? B.get(P) : null;
+      if (C) {
+        const w = o["if-none-match"], I = o["if-modified-since"];
+        if (w && w === C.etag || I && C.lastModified && new Date(I) >= new Date(C.lastModified)) {
+          await this._send(ye(s, 304, { etag: C.etag || "", "last-modified": C.lastModified || "" })), await this._send(Se(s));
           return;
         }
-        S.etag && (a["if-none-match"] = S.etag), S.lastModified && (a["if-modified-since"] = S.lastModified);
+        C.etag && (o["if-none-match"] = C.etag), C.lastModified && (o["if-modified-since"] = C.lastModified);
       }
-      const m = await fetch(i, d), A = {}, V = [];
-      m.headers.forEach((w, I) => {
+      const g = await fetch(i, d), A = {}, V = [];
+      g.headers.forEach((w, I) => {
         const N = I.toLowerCase();
         if (!ot.has(N) && !ct.has(N)) {
           if (N === "set-cookie") {
@@ -1569,58 +1658,58 @@ class ht {
           A[I] = w;
         }
       }), V.length > 0 && (A["x-speedrtc-set-cookie"] = JSON.stringify(V));
-      const re = m.headers.get("etag"), oe = m.headers.get("last-modified"), ae = m.headers.get("cache-control") || "", Pe = ae.includes("no-store") || ae.includes("no-cache");
-      if (P && !Pe && rt.has(m.status) && (re || oe) && (B.size >= it && B.delete(B.keys().next().value), B.set(P, { etag: re, lastModified: oe })), A["x-speedrtc-status-text"] = m.statusText, A["x-speedrtc-url"] = m.url, m.redirected && (A["x-speedrtc-redirected"] = "1"), this._compress && (A["x-speedrtc-compressed"] = "gzip"), await this._send(ye(s, m.status, A)), m.body) {
-        const I = (m.headers.get("content-type") || "").toLowerCase().includes("text/css"), N = m.url || i;
-        let H = m.body;
+      const re = g.headers.get("etag"), oe = g.headers.get("last-modified"), ae = g.headers.get("cache-control") || "", Pe = ae.includes("no-store") || ae.includes("no-cache");
+      if (P && !Pe && rt.has(g.status) && (re || oe) && (B.size >= it && B.delete(B.keys().next().value), B.set(P, { etag: re, lastModified: oe })), A["x-speedrtc-status-text"] = g.statusText, A["x-speedrtc-url"] = g.url, g.redirected && (A["x-speedrtc-redirected"] = "1"), this._compress && (A["x-speedrtc-compressed"] = "gzip"), await this._send(ye(s, g.status, A)), g.body) {
+        const I = (g.headers.get("content-type") || "").toLowerCase().includes("text/css"), N = g.url || i;
+        let F = g.body;
         if (I) {
-          const F = await new Response(H).arrayBuffer(), j = this._rewriteCssUrls(new TextDecoder().decode(F), N), U = new TextEncoder().encode(j), v = this._chunkSize;
-          let x = 0;
+          const q = await new Response(F).arrayBuffer(), j = this._rewriteCssUrls(new TextDecoder().decode(q), N), M = new TextEncoder().encode(j), U = this._chunkSize;
+          let E = 0;
           if (this._compress && typeof CompressionStream < "u") {
-            const C = new CompressionStream("gzip"), z = C.writable.getWriter();
-            z.write(U), z.close();
-            const ce = C.readable.getReader();
+            const b = new CompressionStream("gzip"), z = b.writable.getWriter();
+            z.write(M), z.close();
+            const ce = b.readable.getReader();
             try {
               for (; ; ) {
-                const { done: Ue, value: D } = await ce.read();
-                if (Ue) break;
+                const { done: Me, value: D } = await ce.read();
+                if (Me) break;
                 if (D != null && D.length)
-                  for (let G = 0; G < D.length; G += v)
-                    await this._send(X(s, x++, D.subarray(G, G + v)));
+                  for (let G = 0; G < D.length; G += U)
+                    await this._send(Q(s, E++, D.subarray(G, G + U)));
               }
             } finally {
               ce.cancel().catch(() => {
               });
             }
           } else
-            for (let C = 0; C < U.length; C += v)
-              await this._send(X(s, x++, U.subarray(C, C + v)));
-          o = x;
+            for (let b = 0; b < M.length; b += U)
+              await this._send(Q(s, E++, M.subarray(b, b + U)));
+          a = E;
         } else {
-          this._compress && typeof CompressionStream < "u" && (H = H.pipeThrough(new CompressionStream("gzip")));
-          const F = H.getReader();
+          this._compress && typeof CompressionStream < "u" && (F = F.pipeThrough(new CompressionStream("gzip")));
+          const q = F.getReader();
           let j = 0;
-          const U = this._chunkSize;
+          const M = this._chunkSize;
           try {
             for (; ; ) {
-              const { done: v, value: x } = await F.read();
-              if (v) break;
-              if (x != null && x.length)
-                for (let C = 0; C < x.length; C += U) {
-                  const z = x.subarray(C, C + U);
-                  await this._send(X(s, j++, z));
+              const { done: U, value: E } = await q.read();
+              if (U) break;
+              if (E != null && E.length)
+                for (let b = 0; b < E.length; b += M) {
+                  const z = E.subarray(b, b + M);
+                  await this._send(Q(s, j++, z));
                 }
             }
           } finally {
-            F.cancel().catch(() => {
+            q.cancel().catch(() => {
             });
           }
-          o = j;
+          a = j;
         }
       }
-      await this._send(Se(s, o));
-    } catch (a) {
-      await this._send(Z(s, a.message || "Proxy fetch failed"));
+      await this._send(Se(s, a));
+    } catch (o) {
+      await this._send(Z(s, o.message || "Proxy fetch failed"));
     }
   }
   _rewriteCssUrls(e, t) {
@@ -1733,7 +1822,7 @@ class lt {
     this._renegotiate();
   }
 }
-const Ce = 1, xe = 2, Ee = 3, ne = new TextEncoder(), ee = new TextDecoder();
+const Ce = 1, Ee = 2, xe = 3, ne = new TextEncoder(), ee = new TextDecoder();
 class dt {
   constructor(e) {
     this._send = e, this._streams = /* @__PURE__ */ new Map(), this._listeners = {};
@@ -1754,7 +1843,7 @@ class dt {
         }
   }
   create(e) {
-    const t = new ke(e, this._send);
+    const t = new be(e, this._send);
     this._streams.set(e, t);
     const s = ne.encode(e), n = new ArrayBuffer(2 + s.length), i = new Uint8Array(n);
     return i[0] = Ce, i[1] = s.length, i.set(s, 2), this._send(n), t;
@@ -1765,22 +1854,22 @@ class dt {
   handleIncoming(e) {
     const t = new Uint8Array(e), s = t[0];
     if (s === Ce) {
-      const n = t[1], i = ee.decode(t.slice(2, 2 + n)), r = new ke(i, this._send);
+      const n = t[1], i = ee.decode(t.slice(2, 2 + n)), r = new be(i, this._send);
       this._streams.set(i, r), this._emit("incoming", r);
       return;
     }
-    if (s === xe) {
+    if (s === Ee) {
       const n = t[1], i = ee.decode(t.slice(2, 2 + n)), r = e.slice(2 + n), c = this._streams.get(i);
       c && c._handleData(r);
       return;
     }
-    if (s === Ee) {
+    if (s === xe) {
       const n = t[1], i = ee.decode(t.slice(2, 2 + n)), r = this._streams.get(i);
       r && (r._handleClose(), this._streams.delete(i));
     }
   }
 }
-class ke {
+class be {
   constructor(e, t) {
     this.name = e, this._send = t, this._listeners = {}, this._closed = !1;
   }
@@ -1801,13 +1890,13 @@ class ke {
   async write(e) {
     if (this._closed) throw new Error("Stream closed");
     const t = new Uint8Array(e), s = ne.encode(this.name), n = new ArrayBuffer(2 + s.length + t.length), i = new Uint8Array(n);
-    i[0] = xe, i[1] = s.length, i.set(s, 2), i.set(t, 2 + s.length), await this._send(n);
+    i[0] = Ee, i[1] = s.length, i.set(s, 2), i.set(t, 2 + s.length), await this._send(n);
   }
   async close() {
     if (this._closed) return;
     this._closed = !0;
     const e = ne.encode(this.name), t = new ArrayBuffer(2 + e.length), s = new Uint8Array(t);
-    s[0] = Ee, s[1] = e.length, s.set(e, 2), await this._send(t), this._emit("close");
+    s[0] = xe, s[1] = e.length, s.set(e, 2), await this._send(t), this._emit("close");
   }
   _handleData(e) {
     this._emit("data", e);
@@ -1835,14 +1924,14 @@ const k = {
     credential: "openrelayproject"
   }
 ];
-let be = 1, q = null, te = null;
-function Me() {
-  return q ? Promise.resolve(q) : (te || (te = RTCPeerConnection.generateCertificate({ name: "ECDSA", namedCurve: "P-256" }).then((h) => (q = h, h)).catch(() => null)), te);
+let ke = 1, H = null, te = null;
+function ve() {
+  return H ? Promise.resolve(H) : (te || (te = RTCPeerConnection.generateCertificate({ name: "ECDSA", namedCurve: "P-256" }).then((l) => (H = l, l)).catch(() => null)), te);
 }
-Me();
-function E(h, e) {
+ve();
+function v(l, e) {
   const t = new Uint8Array(e), s = new ArrayBuffer(1 + t.length), n = new Uint8Array(s);
-  return n[0] = h, n.set(t, 1), s;
+  return n[0] = l, n.set(t, 1), s;
 }
 class _t {
   constructor({
@@ -1853,17 +1942,17 @@ class _t {
     isHost: i = !1,
     requireRoomCode: r = !1,
     trackerUrls: c = null,
-    driveSignal: o = null,
-    serverMode: a = !1,
-    iceTransportPolicy: l = "all",
+    driveSignal: a = null,
+    serverMode: o = !1,
+    iceTransportPolicy: h = "all",
     iceCandidatePoolSize: d = 10,
-    signalServer: f = null
+    signalServer: u = null
   } = {}) {
-    this.iceServers = e, this.iceTransportPolicy = l, this.iceCandidatePoolSize = d, this.dataChannelCount = t, this.chunkSize = s, this.isHost = i, this.requireRoomCode = r, this.trackerUrls = c, this.driveSignalConfig = o, this.signalServerUrl = f, this.serverMode = a, this.remoteIsHost = !1, this.pc = null, this.signaling = null, this.pool = null, this.bonding = null, this.monitor = new Te(), this.roomCode = null, this.isOfferer = !1, this._listeners = {}, this._pendingMeta = /* @__PURE__ */ new Map(), this._probeTimers = /* @__PURE__ */ new Map(), this._negotiationState = "idle", this._pcCreated = !1, this._iceRestartPending = !1, this._pendingIceCandidates = [], this._pendingRemoteCandidates = [], this._preConnectedWs = null, this._preWarmedManager = null, this._proxyOpts = n, this.message = null, this._proxyClient = null, this._proxyServer = null, this.proxy = null, this.media = null, this.stream = null;
+    this.iceServers = e, this.iceTransportPolicy = h, this.iceCandidatePoolSize = d, this.dataChannelCount = t, this.chunkSize = s, this.isHost = i, this.requireRoomCode = r, this.trackerUrls = c, this.driveSignalConfig = a, this.signalServerUrl = u, this.serverMode = o, this.remoteIsHost = !1, this.pc = null, this.signaling = null, this.pool = null, this.bonding = null, this.monitor = new Te(), this.roomCode = null, this.isOfferer = !1, this._listeners = {}, this._pendingMeta = /* @__PURE__ */ new Map(), this._probeTimers = /* @__PURE__ */ new Map(), this._negotiationState = "idle", this._pcCreated = !1, this._iceRestartPending = !1, this._pendingIceCandidates = [], this._pendingRemoteCandidates = [], this._preConnectedWs = null, this._preWarmedManager = null, this._proxyOpts = n, this.message = null, this._proxyClient = null, this._proxyServer = null, this.proxy = null, this.media = null, this.stream = null;
   }
   warmup() {
     var e;
-    if (Me(), this._pcCreated || this._createPeerConnection(), this.driveSignalConfig && p.warmupToken(this.driveSignalConfig).catch(() => {
+    if (ve(), this._pcCreated || this._createPeerConnection(), this.driveSignalConfig && m.warmupToken(this.driveSignalConfig).catch(() => {
     }), this.signalServerUrl && !this._preConnectedWs && pe.preConnect(this.signalServerUrl).then((t) => {
       this._preConnectedWs = t;
     }).catch(() => {
@@ -1932,19 +2021,19 @@ class _t {
   }
   async send(e) {
     if (!this.bonding) throw new Error("Not connected");
-    const t = be++, n = me(e, t, this.chunkSize).map((i) => E(k.CHUNK, i));
+    const t = ke++, n = me(e, t, this.chunkSize).map((i) => v(k.CHUNK, i));
     await this.bonding.sendChunks(n);
   }
   async sendFile(e) {
     if (!this.bonding) throw new Error("Not connected");
-    const t = be++, s = await e.arrayBuffer(), n = { name: e.name, size: e.size, type: e.type }, i = E(k.CHUNK, ze(t, n));
-    for (const o of this.bonding.senders)
+    const t = ke++, s = await e.arrayBuffer(), n = { name: e.name, size: e.size, type: e.type }, i = v(k.CHUNK, ze(t, n));
+    for (const a of this.bonding.senders)
       try {
-        await o(i);
+        await a(i);
       } catch {
       }
-    await new Promise((o) => setTimeout(o, 50));
-    const r = me(s, t, this.chunkSize), c = r.map((o) => E(k.CHUNK, o));
+    await new Promise((a) => setTimeout(a, 50));
+    const r = me(s, t, this.chunkSize), c = r.map((a) => v(k.CHUNK, a));
     this._emit("send-start", { transferId: t, name: e.name, totalChunks: r.length }), await this.bonding.sendChunks(c), this._emit("send-complete", { transferId: t, name: e.name });
   }
   getStats() {
@@ -1963,7 +2052,7 @@ class _t {
   disconnect() {
     this.monitor.stop();
     for (const e of this._probeTimers.values()) clearInterval(e);
-    if (this._probeTimers.clear(), this.media && this.media.stop(), this.pool && this.pool.close(), this.pc && this.pc.close(), this.signaling && this.signaling.close(), this._preConnectedWs) {
+    if (this._probeTimers.clear(), this._proxyClient && this._proxyClient.release(), this.media && this.media.stop(), this.pool && this.pool.close(), this.pc && this.pc.close(), this.signaling && this.signaling.close(), this._preConnectedWs) {
       try {
         this._preConnectedWs.close();
       } catch {
@@ -1974,7 +2063,7 @@ class _t {
   }
   _createSignaling(e) {
     if (this.driveSignalConfig)
-      return new p(this.roomCode, e, this.driveSignalConfig);
+      return new m(this.roomCode, e, this.driveSignalConfig);
     if (this.signalServerUrl) {
       const s = new pe(this.roomCode, e, this.signalServerUrl);
       return this._preConnectedWs && (s.usePreConnectedSocket(this._preConnectedWs), this._preConnectedWs = null), s;
@@ -2018,7 +2107,7 @@ class _t {
       bundlePolicy: "max-bundle",
       rtcpMuxPolicy: "require"
     };
-    q && (e.certificates = [q]), this.pc = new RTCPeerConnection(e), this.pc.onicecandidate = (t) => {
+    H && (e.certificates = [H]), this.pc = new RTCPeerConnection(e), this.pc.onicecandidate = (t) => {
       var n;
       if (this.driveSignalConfig || !t.candidate || !this._isSignalingReady()) return;
       const s = {
@@ -2130,21 +2219,25 @@ class _t {
     const e = async (s) => {
       this.bonding && this.bonding.senders.length > 0 && await this.bonding.sendSingle(s);
     }, t = this.serverMode ? async (s) => {
-      const n = E(k.PROXY, s);
+      const n = v(k.PROXY, s);
       this.pool.sendImmediate(n) === -1 && await this.pool.send(n);
     } : async (s) => {
-      await e(E(k.PROXY, s));
+      await e(v(k.PROXY, s));
     };
-    this.message = new Qe(async (s) => {
-      await e(E(k.MESSAGE, s));
+    this.message = new Ye(async (s) => {
+      await e(v(k.MESSAGE, s));
     }), this._proxyClient = new st(t), this._proxyServer = new ht(t, this._proxyOpts), this.proxy = {
       fetch: (s, n) => this._proxyClient.fetch(s, n),
+      intercept: (s, n) => this._proxyClient.intercept(s, n),
+      release: () => this._proxyClient.release(),
+      createInterceptScript: () => this._proxyClient.createInterceptScript(),
+      cookieJar: this._proxyClient.cookieJar,
       serve: (s) => {
         s && (s.allowList != null && (this._proxyServer._allowList = s.allowList), s.blockList != null && (this._proxyServer._blockList = s.blockList), s.chunkSize != null && (this._proxyServer._chunkSize = s.chunkSize), s.compress != null && (this._proxyServer._compress = s.compress)), this._proxyServer.serve();
       },
       stop: () => this._proxyServer.stop()
     }, this.stream = new dt(async (s) => {
-      await e(E(k.STREAM, s));
+      await e(v(k.STREAM, s));
     });
   }
   _updateBondingPaths() {
@@ -2155,7 +2248,7 @@ class _t {
         await this.pool.sendOnChannel(s, i);
       });
     }
-    this.bonding ? this.bonding.updatePaths(e, t) : (this.bonding = new Fe({
+    this.bonding ? this.bonding.updatePaths(e, t) : (this.bonding = new qe({
       senders: e,
       linkIds: t,
       monitor: this.monitor
@@ -2212,7 +2305,7 @@ class _t {
       const n = setInterval(async () => {
         const i = Je(performance.now());
         try {
-          await this.pool.sendOnChannel(t, E(k.CHUNK, i)), this.monitor.recordProbeSent(s);
+          await this.pool.sendOnChannel(t, v(k.CHUNK, i)), this.monitor.recordProbeSent(s);
         } catch {
         }
       }, e);
@@ -2227,22 +2320,22 @@ class _t {
   }
 }
 export {
-  Fe as BondingEngine,
+  qe as BondingEngine,
   Te as ConnectionMonitor,
   Ie as DEFAULT_CHUNK_SIZE,
   Le as DataChannelPool,
   pe as DirectSignal,
-  p as DriveSignal,
+  m as DriveSignal,
   L as Flags,
   K as HEADER_SIZE,
   lt as MediaManager,
-  Qe as Messenger,
+  Ye as Messenger,
   st as ProxyClient,
   y as ProxyFrameType,
   ht as ProxyServer,
   Re as SignalManager,
   _t as SpeedRTC,
-  ke as Stream,
+  be as Stream,
   dt as StreamManager,
   je as decodeChunk,
   Ge as decodeMetaPayload,
@@ -2251,6 +2344,6 @@ export {
   ie as encodeChunk,
   ze as encodeMetaChunk,
   Je as encodeProbe,
-  Xe as encodeRequest,
+  Qe as encodeRequest,
   me as splitIntoChunks
 };
