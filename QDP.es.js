@@ -1,8 +1,8 @@
-var Lt = Object.defineProperty;
-var qt = (c, e, t) => e in c ? Lt(c, e, { enumerable: !0, configurable: !0, writable: !0, value: t }) : c[e] = t;
-var re = (c, e, t) => qt(c, typeof e != "symbol" ? e + "" : e, t);
+var Mt = Object.defineProperty;
+var Lt = (c, e, t) => e in c ? Mt(c, e, { enumerable: !0, configurable: !0, writable: !0, value: t }) : c[e] = t;
+var re = (c, e, t) => Lt(c, typeof e != "symbol" ? e + "" : e, t);
 class Ft {
-  constructor(e, { channelCount: t = 4, ordered: s = !1, protocol: n = "speedrtc" } = {}) {
+  constructor(e, { channelCount: t = 4, ordered: s = !1, protocol: n = "qdp" } = {}) {
     this.pc = e, this.channelCount = t, this.ordered = s, this.protocol = n, this.channels = [], this.openChannels = /* @__PURE__ */ new Set(), this._rrIndex = 0, this._openArray = [], this._openArrayDirty = !0, this._onMessage = null, this._onOpen = null, this._onClose = null;
   }
   onMessage(e) {
@@ -16,7 +16,7 @@ class Ft {
   }
   createChannels() {
     for (let e = 0; e < this.channelCount; e++) {
-      const t = `speedrtc-${e}`, s = this.pc.createDataChannel(t, {
+      const t = `qdp-${e}`, s = this.pc.createDataChannel(t, {
         ordered: this.ordered,
         protocol: this.protocol,
         id: e,
@@ -318,11 +318,11 @@ class fe {
       peer_id: this.peerId
     };
     if (this.remotePeerId) {
-      s.to_peer_id = this.remotePeerId, s.answer = { type: "answer", sdp: t }, s.offer_id = "speedrtc-relay";
+      s.to_peer_id = this.remotePeerId, s.answer = { type: "answer", sdp: t }, s.offer_id = "qdp-relay";
       const n = JSON.stringify(s);
       this._preferredNodeUrl ? this._manager.sendTo(this._preferredNodeUrl, n) || this._manager.send(n) : this._manager.send(n);
     } else this.isOfferer && e.type === "offer" && (this._localOfferPayload = t, s.numwant = 1, s.offers = [{
-      offer_id: "speedrtc-relay",
+      offer_id: "qdp-relay",
       offer: { type: "offer", sdp: t }
     }], this._manager.broadcast(JSON.stringify(s)));
   }
@@ -333,7 +333,7 @@ class fe {
       peer_id: this.peerId,
       numwant: 1
     };
-    this.isOfferer && this._localOfferPayload && (t.offers = [{ offer_id: "speedrtc-relay", offer: { type: "offer", sdp: this._localOfferPayload } }]);
+    this.isOfferer && this._localOfferPayload && (t.offers = [{ offer_id: "qdp-relay", offer: { type: "offer", sdp: this._localOfferPayload } }]);
     const s = JSON.stringify(t);
     e ? this._manager.broadcast(s) : this._manager.send(s);
   }
@@ -872,7 +872,7 @@ function Ue(c, e) {
   } while (i & 128);
   return { value: t, nextOffset: n };
 }
-function Me(c, e, t, s) {
+function qe(c, e, t, s) {
   const n = P("MQTT"), i = 4;
   let r = 2;
   e && (r |= 128), t && (r |= 64);
@@ -885,14 +885,14 @@ function Me(c, e, t, s) {
   ]), d = new Uint8Array([...o, ...a, ...h]), f = l.length + d.length, u = B(f), _ = new Uint8Array(1 + u.length + f);
   return _[0] = T.CONNECT << 4, _.set(u, 1), _.set(l, 1 + u.length), _.set(d, 1 + u.length + l.length), _;
 }
-function Le(c, e, t, s) {
+function Me(c, e, t, s) {
   const n = P(c), i = typeof e == "string" ? new TextEncoder().encode(e) : new Uint8Array(e), r = t > 0, a = n.length + (r ? 2 : 0) + i.length, h = B(a), l = new Uint8Array(1 + h.length + a);
   let d = T.PUBLISH << 4;
   t === 1 ? d |= 2 : t === 2 && (d |= 4), l[0] = d, l.set(h, 1);
   let f = 1 + h.length;
   return l.set(n, f), f += n.length, r && (l[f++] = s >> 8 & 255, l[f++] = s & 255), l.set(i, f), l;
 }
-function qe(c, e, t) {
+function Le(c, e, t) {
   let s = 0;
   const n = e.map((h) => {
     const l = P(h);
@@ -1123,7 +1123,7 @@ class Vt {
         const t = { [j.SESSION_EXPIRY]: 0 };
         this._ws.send(bt(this.peerId, this.username, this.password, this.keepalive, t));
       } else
-        this._ws.send(Me(this.peerId, this.username, this.password, this.keepalive));
+        this._ws.send(qe(this.peerId, this.username, this.password, this.keepalive));
     }, this._ws.onmessage = (t) => {
       const s = new Uint8Array(t.data), n = new Uint8Array(this._recvBuf.length + s.length);
       n.set(this._recvBuf), n.set(s, this._recvBuf.length), this._recvBuf = n, this._processBuffer();
@@ -1160,12 +1160,12 @@ class Vt {
   _publish(e, t) {
     if (!this._ws || this._ws.readyState !== WebSocket.OPEN) return;
     const s = this.qos > 0 ? this._nextPacketId() : 0;
-    this.protocolVersion === 5 ? this._ws.send(Oe(e, t, this.qos, s, {})) : this._ws.send(Le(e, t, this.qos, s));
+    this.protocolVersion === 5 ? this._ws.send(Oe(e, t, this.qos, s, {})) : this._ws.send(Me(e, t, this.qos, s));
   }
   _subscribe(e) {
     if (!this._ws || this._ws.readyState !== WebSocket.OPEN) return;
     const t = this._nextPacketId();
-    this.protocolVersion === 5 ? this._ws.send(Ct(t, e, this.qos, {})) : this._ws.send(qe(t, e, this.qos));
+    this.protocolVersion === 5 ? this._ws.send(Ct(t, e, this.qos, {})) : this._ws.send(Le(t, e, this.qos));
   }
   _processBuffer() {
     for (; this._recvBuf.length >= 2; ) {
@@ -1235,7 +1235,7 @@ class Vt {
     e === `${n}/announce` ? this.remotePeerId || (this.isOfferer && !s.isOfferer ? (this.remotePeerId = s.from, this._stopAnnouncing(), this.onMessage && this.onMessage({ type: "peer-joined" })) : !this.isOfferer && s.isOfferer && (this.remotePeerId = s.from, this._stopAnnouncing())) : e === `${n}/offer` ? !this.isOfferer && s.data && (this.remotePeerId || (this.remotePeerId = s.from, this._stopAnnouncing()), s.from === this.remotePeerId && this.onMessage && this.onMessage(s.data)) : e === `${n}/msg/${this.peerId}` && s.data && this.onMessage && (this.remotePeerId || (this.remotePeerId = s.from), this.onMessage(s.data));
   }
 }
-class L {
+class M {
   constructor(e = {}) {
     var t;
     this.url = typeof e.server == "string" ? e.server : (t = e.server) == null ? void 0 : t.url, this.roomCode = e.roomCode || null, this.localPeerId = e.localPeerId || null, this.remotePeerId = e.remotePeerId || null, this.transportType = e.transportType || "generic", this.connected = !1, this.onData = e.onData || null, this.onOpen = e.onOpen || null, this.onClose = e.onClose || null, this._ws = null, this._closed = !1;
@@ -1297,7 +1297,7 @@ class vt {
         const e = {};
         this._topicAlias && (e[j.TOPIC_ALIAS_MAX] = 10), this._ws.send(bt(this._clientId, this.username, this.password, this.keepalive, e));
       } else
-        this._ws.send(Me(this._clientId, this.username, this.password, this.keepalive));
+        this._ws.send(qe(this._clientId, this.username, this.password, this.keepalive));
     }, this._ws.onmessage = (e) => {
       const t = new Uint8Array(e.data), s = new Uint8Array(this._recvBuf.length + t.length);
       s.set(this._recvBuf), s.set(t, this._recvBuf.length), this._recvBuf = s, this._processBuffer();
@@ -1358,12 +1358,12 @@ class vt {
       } else
         this._ws.send(Oe(e, t, this.qos, s, n));
     } else
-      this._ws.send(Le(e, t, this.qos, s));
+      this._ws.send(Me(e, t, this.qos, s));
   }
   _subscribe(e) {
     if (!this._ws || this._ws.readyState !== WebSocket.OPEN) return;
     const t = this._nextPacketId();
-    this.protocolVersion === 5 ? this._ws.send(Ct(t, e, this.qos, {})) : this._ws.send(qe(t, e, this.qos));
+    this.protocolVersion === 5 ? this._ws.send(Ct(t, e, this.qos, {})) : this._ws.send(Le(t, e, this.qos));
   }
   _processBuffer() {
     for (; this._recvBuf.length >= 2; ) {
@@ -1446,7 +1446,7 @@ class vt {
     this._pingInterval && (clearInterval(this._pingInterval), this._pingInterval = null);
   }
   _connectServer() {
-    this._closed = !1, this._relay = new L({
+    this._closed = !1, this._relay = new M({
       server: this._serverConfig,
       roomCode: this.roomCode,
       localPeerId: this.localPeerId,
@@ -1696,7 +1696,7 @@ class zt {
     }
   }
   async _connectServer() {
-    this._closed = !1, this._relay = new L({
+    this._closed = !1, this._relay = new M({
       server: this._serverConfig,
       roomCode: this.roomCode,
       localPeerId: this.localPeerId,
@@ -2179,7 +2179,7 @@ class ts {
     }
   }
   async _connectServer() {
-    this._closed = !1, this._relay = new L({
+    this._closed = !1, this._relay = new M({
       server: this._serverConfig,
       roomCode: this.roomCode,
       localPeerId: this.localPeerId,
@@ -2396,7 +2396,7 @@ class ss {
     }
   }
   async _connectServer() {
-    this._closed = !1, this._relay = new L({
+    this._closed = !1, this._relay = new M({
       server: this._serverConfig,
       roomCode: this.roomCode,
       localPeerId: this.localPeerId,
@@ -2796,7 +2796,7 @@ class fs {
     this._map = {}, this._internal = /* @__PURE__ */ new Set();
     for (const [t, s] of Object.entries(e)) {
       const n = t.toLowerCase();
-      this._map[n] = s, n.startsWith("x-speedrtc-") && this._internal.add(n);
+      this._map[n] = s, n.startsWith("x-qdp-") && this._internal.add(n);
     }
   }
   get(e) {
@@ -2839,7 +2839,7 @@ class _s {
       const l = a.slice(0, h).trim(), d = a.slice(h + 1).trim();
       let f = n.hostname, u = "/", _ = null, p = !1, w = n.protocol === "https:";
       for (let m = 1; m < o.length; m++) {
-        const [W, v = ""] = o[m].split("=").map((q) => q.trim()), b = W.toLowerCase();
+        const [W, v = ""] = o[m].split("=").map((L) => L.trim()), b = W.toLowerCase();
         b === "domain" ? f = v.replace(/^\./, "") : b === "path" ? u = v || "/" : b === "expires" ? _ = new Date(v).getTime() : b === "max-age" ? _ = i + parseInt(v, 10) * 1e3 : b === "httponly" ? p = !0 : b === "secure" && (w = !0);
       }
       if (_ !== null && _ < i) {
@@ -2881,15 +2881,15 @@ class ps {
     this._send = e, this._pending = /* @__PURE__ */ new Map(), this.cookieJar = new _s(), this._intercepted = !1, this._origFetch = null, this._origXhrOpen = null, this._origXhrSend = null, this._interceptTarget = null, this._interceptFilter = null;
   }
   intercept(e = globalThis, t = null) {
-    this._intercepted && this.release(), this._interceptTarget = e, this._interceptFilter = t, this._intercepted = !0, e.__speedrtc_proxy_fetch = (i, r) => this.fetch(i, r), this._messageHandler = (i) => {
-      if (!i.data || i.data.type !== "speedrtc-fetch" || !i.source) return;
+    this._intercepted && this.release(), this._interceptTarget = e, this._interceptFilter = t, this._intercepted = !0, e.__qdp_proxy_fetch = (i, r) => this.fetch(i, r), this._messageHandler = (i) => {
+      if (!i.data || i.data.type !== "qdp-fetch" || !i.source) return;
       const { id: r, url: o, method: a, headers: h, body: l } = i.data;
       this.fetch(o, { method: a, headers: h, body: l }).then(async (d) => {
         const f = await d.arrayBuffer(), u = {};
         d.headers.forEach((_, p) => {
           u[p] = _;
         }), i.source.postMessage({
-          type: "speedrtc-fetch-res",
+          type: "qdp-fetch-res",
           id: r,
           status: d.status,
           statusText: d.statusText,
@@ -2899,7 +2899,7 @@ class ps {
       }).catch((d) => {
         try {
           i.source.postMessage({
-            type: "speedrtc-fetch-res",
+            type: "qdp-fetch-res",
             id: r,
             error: d.message || "Fetch failed"
           }, "*");
@@ -2937,25 +2937,25 @@ class ps {
       this._origXhrOpen = n.prototype.open, this._origXhrSend = n.prototype.send;
       const i = this._origXhrOpen, r = this._origXhrSend;
       n.prototype.open = function(a, h, ...l) {
-        return this._speedrtcMethod = a, this._speedrtcUrl = String(h), this._speedrtcHeaders = {}, this._speedrtcAsync = l[0] !== !1, i.call(this, a, h, ...l);
+        return this._qdpMethod = a, this._qdpUrl = String(h), this._qdpHeaders = {}, this._qdpAsync = l[0] !== !1, i.call(this, a, h, ...l);
       };
       const o = n.prototype.setRequestHeader;
       this._origXhrSetHeader = o, n.prototype.setRequestHeader = function(a, h) {
-        return this._speedrtcHeaders && (this._speedrtcHeaders[a] = h), o.call(this, a, h);
+        return this._qdpHeaders && (this._qdpHeaders[a] = h), o.call(this, a, h);
       }, n.prototype.send = function(a) {
-        const h = this._speedrtcUrl;
+        const h = this._qdpUrl;
         if (h && s._shouldIntercept(h)) {
           const l = this, d = {
-            method: this._speedrtcMethod || "GET",
-            headers: this._speedrtcHeaders || {}
+            method: this._qdpMethod || "GET",
+            headers: this._qdpHeaders || {}
           };
           a != null && (d.body = a), s.fetch(h, d).then(async (f) => {
             Object.defineProperty(l, "status", { value: f.status, writable: !1, configurable: !0 }), Object.defineProperty(l, "statusText", { value: f.statusText, writable: !1, configurable: !0 });
             const u = await f.text();
             Object.defineProperty(l, "responseText", { value: u, writable: !1, configurable: !0 }), Object.defineProperty(l, "response", { value: u, writable: !1, configurable: !0 }), Object.defineProperty(l, "readyState", { value: 4, writable: !1, configurable: !0 });
             const _ = [];
-            f.headers.forEach((p, w) => _.push(`${w}: ${p}`)), Object.defineProperty(l, "_speedrtcRespHeaders", { value: _.join(`\r
-`), configurable: !0 }), l.getAllResponseHeaders = () => l._speedrtcRespHeaders, l.getResponseHeader = (p) => f.headers.get(p), l.onreadystatechange && l.onreadystatechange(new Event("readystatechange")), l.onload && l.onload(new Event("load")), l.dispatchEvent(new Event("readystatechange")), l.dispatchEvent(new Event("load")), l.dispatchEvent(new Event("loadend"));
+            f.headers.forEach((p, w) => _.push(`${w}: ${p}`)), Object.defineProperty(l, "_qdpRespHeaders", { value: _.join(`\r
+`), configurable: !0 }), l.getAllResponseHeaders = () => l._qdpRespHeaders, l.getResponseHeader = (p) => f.headers.get(p), l.onreadystatechange && l.onreadystatechange(new Event("readystatechange")), l.onload && l.onload(new Event("load")), l.dispatchEvent(new Event("readystatechange")), l.dispatchEvent(new Event("load")), l.dispatchEvent(new Event("loadend"));
           }).catch((f) => {
             Object.defineProperty(l, "readyState", { value: 4, writable: !1, configurable: !0 }), Object.defineProperty(l, "status", { value: 0, writable: !1, configurable: !0 }), l.onerror && l.onerror(new Event("error")), l.dispatchEvent(new Event("error")), l.dispatchEvent(new Event("loadend"));
           });
@@ -2969,7 +2969,7 @@ class ps {
     if (!this._intercepted) return;
     const e = this._interceptTarget;
     try {
-      delete e.__speedrtc_proxy_fetch;
+      delete e.__qdp_proxy_fetch;
     } catch {
     }
     this._messageHandler && (e.removeEventListener("message", this._messageHandler), this._messageHandler = null), this._origFetch && (e.fetch = this._origFetch);
@@ -2996,7 +2996,7 @@ class ps {
     }
   }
   createInterceptScript() {
-    return "<script>(function(){var _of=window.fetch;window.fetch=function(i,o){try{var u=new URL(typeof i==='string'?i:i.url,location.href);if(u.origin!==location.origin){return window.parent.__speedrtc_proxy_fetch(u.href,o||{});}}catch(e){}return _of.call(window,i,o);};})()<\/script>";
+    return "<script>(function(){var _of=window.fetch;window.fetch=function(i,o){try{var u=new URL(typeof i==='string'?i:i.url,location.href);if(u.origin!==location.origin){return window.parent.__qdp_proxy_fetch(u.href,o||{});}}catch(e){}return _of.call(window,i,o);};})()<\/script>";
   }
   async fetch(e, t = {}) {
     const s = us++, n = (t.method || "GET").toUpperCase(), i = Object.assign({}, t.headers || {});
@@ -3094,7 +3094,7 @@ class ps {
     let n = 0;
     for (const a of t.bodyChunks)
       s.set(a.data, n), n += a.data.length;
-    const i = new fs(t.headers), r = i.get("x-speedrtc-compressed") === "gzip", o = i.get("x-speedrtc-set-cookie");
+    const i = new fs(t.headers), r = i.get("x-qdp-compressed") === "gzip", o = i.get("x-qdp-set-cookie");
     if (o)
       try {
         const a = JSON.parse(o);
@@ -3136,7 +3136,7 @@ class ps {
 }
 class J {
   constructor(e, t, s) {
-    this.status = e, this.statusText = t.get("x-speedrtc-status-text") || "", this.url = t.get("x-speedrtc-url") || "", this.redirected = t.get("x-speedrtc-redirected") === "1", this.ok = e >= 200 && e < 300, this.type = "basic", this.headers = t, this._body = s, this.bodyUsed = !1, this.body = typeof ReadableStream < "u" ? new ReadableStream({
+    this.status = e, this.statusText = t.get("x-qdp-status-text") || "", this.url = t.get("x-qdp-url") || "", this.redirected = t.get("x-qdp-redirected") === "1", this.ok = e >= 200 && e < 300, this.type = "basic", this.headers = t, this._body = s, this.bodyUsed = !1, this.body = typeof ReadableStream < "u" ? new ReadableStream({
       start(n) {
         n.enqueue(new Uint8Array(s)), n.close();
       }
@@ -3198,7 +3198,7 @@ const ms = 16 * 1024, se = /* @__PURE__ */ new Map(), gs = 200, ys = /* @__PURE_
   "access-control-expose-headers",
   "access-control-max-age",
   "strict-transport-security"
-]), Se = "<script data-speedrtc>!function(){var _i=0,_c={},_p,h=/^https?:\\/\\//,D=Object.defineProperty;function g(){if(_p)return _p;try{if(_p=window.__speedrtc_proxy_fetch)return _p}catch(e){}try{if(_p=window.parent.__speedrtc_proxy_fetch)return _p}catch(e){}try{if(_p=window.top.__speedrtc_proxy_fetch)return _p}catch(e){}}window.addEventListener('message',function(e){var m=e.data;if(!m||m.type!=='speedrtc-fetch-res')return;var c=_c[m.id];if(!c)return;delete _c[m.id];if(m.error)return c[1](new Error(m.error));c[0](new Response(m.body,{status:m.status,statusText:m.statusText||'',headers:m.headers||{}}))});function P(u,o){var fn=g();if(fn)return fn(u,o||{});var id=++_i;return new Promise(function(ok,no){_c[id]=[ok,no];try{var t=window.parent!==window?window.parent:window.top;t.postMessage({type:'speedrtc-fetch',id:id,url:u,method:(o&&o.method)||'GET',headers:(o&&o.headers)||{},body:(o&&o.body)||null},'*')}catch(e){delete _c[id];no(e)}})}var f=fetch;fetch=function(i,o){var u=i&&i.url||''+i;return h.test(u)?P(u,o||{}):f.apply(this,arguments)};var X=XMLHttpRequest.prototype,O=X.open,S=X.send,H=X.setRequestHeader;X.open=function(m,u){this._m=m;this._u=''+u;this._h={};return O.apply(this,arguments)};X.setRequestHeader=function(n,v){this._h&&(this._h[n]=v);return H.apply(this,arguments)};X.send=function(b){var x=this,u=x._u;if(h.test(u)){var o={method:x._m||'GET',headers:x._h||{}};b!=null&&(o.body=b);P(u,o).then(function(r){D(x,'status',{value:r.status,configurable:1});D(x,'statusText',{value:r.statusText||'',configurable:1});return r.text().then(function(t){D(x,'responseText',{value:t,configurable:1});D(x,'response',{value:t,configurable:1});D(x,'readyState',{value:4,configurable:1});try{x.dispatchEvent(new Event('readystatechange'))}catch(e){}try{x.onreadystatechange&&x.onreadystatechange()}catch(e){}try{x.dispatchEvent(new Event('load'))}catch(e){}try{x.onload&&x.onload()}catch(e){}try{x.dispatchEvent(new Event('loadend'))}catch(e){}})}).catch(function(){D(x,'readyState',{value:4,configurable:1});D(x,'status',{value:0,configurable:1});try{x.dispatchEvent(new Event('error'))}catch(e){}try{x.onerror&&x.onerror()}catch(e){}try{x.dispatchEvent(new Event('loadend'))}catch(e){}});return}return S.apply(this,arguments)};try{var hp=history.pushState,hr=history.replaceState;history.pushState=function(s,t,u){try{return hp.call(this,s,t,u)}catch(e){return hp.call(this,s,t)}};history.replaceState=function(s,t,u){try{return hr.call(this,s,t,u)}catch(e){return hr.call(this,s,t)}}}catch(e){}try{if(navigator.serviceWorker)navigator.serviceWorker.register=function(){return Promise.reject(new Error('blocked'))}}catch(e){}try{var sb=navigator.sendBeacon;if(sb)navigator.sendBeacon=function(u,b){if(h.test(u)){P(u,{method:'POST',body:b});return true}return sb.apply(navigator,arguments)}}catch(e){}try{var wo=window.open;window.open=function(u){if(u&&h.test(u)){try{window.parent.postMessage({type:'speedrtc-nav',url:u},'*')}catch(e){}return null}return wo.apply(this,arguments)}}catch(e){}document.addEventListener('error',function(e){var el=e.target,t,s;if(!el||!el.tagName||el._s)return;t=el.tagName;s=t==='LINK'?el.href||'':el.src||el.currentSrc||el.data||'';if(!h.test(s))return;el._s=1;t==='LINK'&&(el.rel||'').includes('stylesheet')?P(s,{}).then(function(r){return r.text()}).then(function(t){var n=document.createElement('style');n.textContent=t;el.parentNode&&el.parentNode.insertBefore(n,el);el.disabled=1}).catch(function(){}):t==='SCRIPT'?P(s,{}).then(function(r){return r.text()}).then(function(t){var n=document.createElement('script');n.textContent=t;document.head.appendChild(n)}).catch(function(){}):P(s,{}).then(function(r){return r.blob()}).then(function(b){var u=URL.createObjectURL(b);el.src!==void 0?el.src=u:el.data!==void 0&&(el.data=u)}).catch(function(){})},1);document.addEventListener('click',function(e){for(var n=e.target;n;n=n.parentElement)if(n.tagName==='A'&&h.test(n.href||'')){e.preventDefault();e.stopPropagation();try{window.parent.postMessage({type:'speedrtc-nav',url:n.href},'*')}catch(x){}break}},1);document.addEventListener('submit',function(e){var f=e.target,u=f.action||'';if(!h.test(u))return;e.preventDefault();(f.method||'get').toUpperCase()==='GET'&&(u+=(~u.indexOf('?')?'&':'?')+new URLSearchParams(new FormData(f)));try{window.parent.postMessage({type:'speedrtc-nav',url:u},'*')}catch(x){}},1)}()<\/script>";
+]), Se = "<script data-qdp>!function(){var _i=0,_c={},_p,h=/^https?:\\/\\//,D=Object.defineProperty;function g(){if(_p)return _p;try{if(_p=window.__qdp_proxy_fetch)return _p}catch(e){}try{if(_p=window.parent.__qdp_proxy_fetch)return _p}catch(e){}try{if(_p=window.top.__qdp_proxy_fetch)return _p}catch(e){}}window.addEventListener('message',function(e){var m=e.data;if(!m||m.type!=='qdp-fetch-res')return;var c=_c[m.id];if(!c)return;delete _c[m.id];if(m.error)return c[1](new Error(m.error));c[0](new Response(m.body,{status:m.status,statusText:m.statusText||'',headers:m.headers||{}}))});function P(u,o){var fn=g();if(fn)return fn(u,o||{});var id=++_i;return new Promise(function(ok,no){_c[id]=[ok,no];try{var t=window.parent!==window?window.parent:window.top;t.postMessage({type:'qdp-fetch',id:id,url:u,method:(o&&o.method)||'GET',headers:(o&&o.headers)||{},body:(o&&o.body)||null},'*')}catch(e){delete _c[id];no(e)}})}var f=fetch;fetch=function(i,o){var u=i&&i.url||''+i;return h.test(u)?P(u,o||{}):f.apply(this,arguments)};var X=XMLHttpRequest.prototype,O=X.open,S=X.send,H=X.setRequestHeader;X.open=function(m,u){this._m=m;this._u=''+u;this._h={};return O.apply(this,arguments)};X.setRequestHeader=function(n,v){this._h&&(this._h[n]=v);return H.apply(this,arguments)};X.send=function(b){var x=this,u=x._u;if(h.test(u)){var o={method:x._m||'GET',headers:x._h||{}};b!=null&&(o.body=b);P(u,o).then(function(r){D(x,'status',{value:r.status,configurable:1});D(x,'statusText',{value:r.statusText||'',configurable:1});return r.text().then(function(t){D(x,'responseText',{value:t,configurable:1});D(x,'response',{value:t,configurable:1});D(x,'readyState',{value:4,configurable:1});try{x.dispatchEvent(new Event('readystatechange'))}catch(e){}try{x.onreadystatechange&&x.onreadystatechange()}catch(e){}try{x.dispatchEvent(new Event('load'))}catch(e){}try{x.onload&&x.onload()}catch(e){}try{x.dispatchEvent(new Event('loadend'))}catch(e){}})}).catch(function(){D(x,'readyState',{value:4,configurable:1});D(x,'status',{value:0,configurable:1});try{x.dispatchEvent(new Event('error'))}catch(e){}try{x.onerror&&x.onerror()}catch(e){}try{x.dispatchEvent(new Event('loadend'))}catch(e){}});return}return S.apply(this,arguments)};try{var hp=history.pushState,hr=history.replaceState;history.pushState=function(s,t,u){try{return hp.call(this,s,t,u)}catch(e){return hp.call(this,s,t)}};history.replaceState=function(s,t,u){try{return hr.call(this,s,t,u)}catch(e){return hr.call(this,s,t)}}}catch(e){}try{if(navigator.serviceWorker)navigator.serviceWorker.register=function(){return Promise.reject(new Error('blocked'))}}catch(e){}try{var sb=navigator.sendBeacon;if(sb)navigator.sendBeacon=function(u,b){if(h.test(u)){P(u,{method:'POST',body:b});return true}return sb.apply(navigator,arguments)}}catch(e){}try{var wo=window.open;window.open=function(u){if(u&&h.test(u)){try{window.parent.postMessage({type:'qdp-nav',url:u},'*')}catch(e){}return null}return wo.apply(this,arguments)}}catch(e){}document.addEventListener('error',function(e){var el=e.target,t,s;if(!el||!el.tagName||el._s)return;t=el.tagName;s=t==='LINK'?el.href||'':el.src||el.currentSrc||el.data||'';if(!h.test(s))return;el._s=1;t==='LINK'&&(el.rel||'').includes('stylesheet')?P(s,{}).then(function(r){return r.text()}).then(function(t){var n=document.createElement('style');n.textContent=t;el.parentNode&&el.parentNode.insertBefore(n,el);el.disabled=1}).catch(function(){}):t==='SCRIPT'?P(s,{}).then(function(r){return r.text()}).then(function(t){var n=document.createElement('script');n.textContent=t;document.head.appendChild(n)}).catch(function(){}):P(s,{}).then(function(r){return r.blob()}).then(function(b){var u=URL.createObjectURL(b);el.src!==void 0?el.src=u:el.data!==void 0&&(el.data=u)}).catch(function(){})},1);document.addEventListener('click',function(e){for(var n=e.target;n;n=n.parentElement)if(n.tagName==='A'&&h.test(n.href||'')){e.preventDefault();e.stopPropagation();try{window.parent.postMessage({type:'qdp-nav',url:n.href},'*')}catch(x){}break}},1);document.addEventListener('submit',function(e){var f=e.target,u=f.action||'';if(!h.test(u))return;e.preventDefault();(f.method||'get').toUpperCase()==='GET'&&(u+=(~u.indexOf('?')?'&':'?')+new URLSearchParams(new FormData(f)));try{window.parent.postMessage({type:'qdp-nav',url:u},'*')}catch(x){}},1)}()<\/script>";
 class Ss {
   constructor(e, t = {}) {
     this._send = e, this._allowList = t.allowList || [], this._blockList = t.blockList || [], this._chunkSize = t.chunkSize || ms, this._compress = t.compress || !1, this._active = !1;
@@ -3250,7 +3250,7 @@ class Ss {
         }
         v.etag && (h["if-none-match"] = v.etag), v.lastModified && (h["if-modified-since"] = v.lastModified);
       }
-      const b = await fetch(i, d), q = {}, me = [];
+      const b = await fetch(i, d), L = {}, me = [];
       b.headers.forEach((I, U) => {
         const Q = U.toLowerCase();
         if (!ws.has(Q) && !Cs.has(Q)) {
@@ -3258,11 +3258,11 @@ class Ss {
             me.push(I);
             return;
           }
-          q[U] = I;
+          L[U] = I;
         }
-      }), me.length > 0 && (q["x-speedrtc-set-cookie"] = JSON.stringify(me));
-      const Ve = b.headers.get("etag"), Ge = b.headers.get("last-modified"), Je = b.headers.get("cache-control") || "", Mt = Je.includes("no-store") || Je.includes("no-cache");
-      if (W && !Mt && ys.has(b.status) && (Ve || Ge) && (se.size >= gs && se.delete(se.keys().next().value), se.set(W, { etag: Ve, lastModified: Ge })), q["x-speedrtc-status-text"] = b.statusText, q["x-speedrtc-url"] = b.url, b.redirected && (q["x-speedrtc-redirected"] = "1"), this._compress && (q["x-speedrtc-compressed"] = "gzip"), await this._send(lt(s, b.status, q)), b.body) {
+      }), me.length > 0 && (L["x-qdp-set-cookie"] = JSON.stringify(me));
+      const Ve = b.headers.get("etag"), Ge = b.headers.get("last-modified"), Je = b.headers.get("cache-control") || "", qt = Je.includes("no-store") || Je.includes("no-cache");
+      if (W && !qt && ys.has(b.status) && (Ve || Ge) && (se.size >= gs && se.delete(se.keys().next().value), se.set(W, { etag: Ve, lastModified: Ge })), L["x-qdp-status-text"] = b.statusText, L["x-qdp-url"] = b.url, b.redirected && (L["x-qdp-redirected"] = "1"), this._compress && (L["x-qdp-compressed"] = "gzip"), await this._send(lt(s, b.status, L)), b.body) {
         const I = (b.headers.get("content-type") || "").toLowerCase(), U = I.includes("text/css"), Q = I.includes("text/html"), ze = b.url || i;
         let Y = b.body;
         if (U) {
@@ -3755,7 +3755,7 @@ function Et() {
   return ie ? Promise.resolve(ie) : (ve || (ve = RTCPeerConnection.generateCertificate({ name: "ECDSA", namedCurve: "P-256" }).then((c) => (ie = c, c)).catch(() => null)), ve);
 }
 Et();
-function M(c, e) {
+function q(c, e) {
   const t = new Uint8Array(e), s = new ArrayBuffer(1 + t.length), n = new Uint8Array(s);
   return n[0] = c, n.set(t, 1), s;
 }
@@ -3856,19 +3856,19 @@ class Ts {
   }
   async send(e) {
     if (!this.bonding) throw new Error("Not connected");
-    const t = _t++, n = ot(e, t, this.chunkSize).map((i) => M(k.CHUNK, i));
+    const t = _t++, n = ot(e, t, this.chunkSize).map((i) => q(k.CHUNK, i));
     await this.bonding.sendChunks(n);
   }
   async sendFile(e) {
     if (!this.bonding) throw new Error("Not connected");
-    const t = _t++, s = await e.arrayBuffer(), n = { name: e.name, size: e.size, type: e.type }, i = M(k.CHUNK, rs(t, n));
+    const t = _t++, s = await e.arrayBuffer(), n = { name: e.name, size: e.size, type: e.type }, i = q(k.CHUNK, rs(t, n));
     for (const a of this.bonding.senders)
       try {
         await a(i);
       } catch {
       }
     await new Promise((a) => setTimeout(a, 50));
-    const r = ot(s, t, this.chunkSize), o = r.map((a) => M(k.CHUNK, a));
+    const r = ot(s, t, this.chunkSize), o = r.map((a) => q(k.CHUNK, a));
     this._emit("send-start", { transferId: t, name: e.name, totalChunks: r.length }), await this.bonding.sendChunks(o), this._emit("send-complete", { transferId: t, name: e.name });
   }
   getStats() {
@@ -4174,13 +4174,13 @@ class Ts {
     const e = async (s) => {
       this.bonding && this.bonding.senders.length > 0 && await this.bonding.sendSingle(s);
     }, t = this.serverMode ? async (s) => {
-      const n = M(k.PROXY, s);
+      const n = q(k.PROXY, s);
       this.pool && this.pool.getOpenCount() > 0 ? this.pool.sendImmediate(n) === -1 && await this.pool.send(n) : await e(n);
     } : async (s) => {
-      await e(M(k.PROXY, s));
+      await e(q(k.PROXY, s));
     };
     this.message = new ls(async (s) => {
-      await e(M(k.MESSAGE, s));
+      await e(q(k.MESSAGE, s));
     }), this._proxyClient = new ps(t), this._proxyServer = new Ss(t, this._proxyOpts), this.proxy = {
       fetch: (s, n) => this._proxyClient.fetch(s, n),
       intercept: (s, n) => this._proxyClient.intercept(s, n),
@@ -4196,7 +4196,7 @@ class Ts {
         blockList: n.blockList || [],
         onRelay: n.onRelay || null
       }), this._proxyRelay.setUpstream(async (i) => {
-        const r = M(k.PROXY, i);
+        const r = q(k.PROXY, i);
         s.bonding && s.bonding.senders.length > 0 && await s.bonding.sendSingle(r);
       }), this._proxyRelay.setDownstream(t), this._proxyRelay.start(), this._proxyRelay),
       stopRelay: () => {
@@ -4204,7 +4204,7 @@ class Ts {
       },
       getRelayStats: () => this._proxyRelay ? this._proxyRelay.getStats() : null
     }, this.stream = new vs(async (s) => {
-      await e(M(k.STREAM, s));
+      await e(q(k.STREAM, s));
     });
   }
   _updateBondingPaths() {
@@ -4477,7 +4477,7 @@ class Ts {
       const n = setInterval(async () => {
         const i = at(performance.now());
         try {
-          await this.pool.sendOnChannel(t, M(k.CHUNK, i)), this.monitor.recordProbeSent(s);
+          await this.pool.sendOnChannel(t, q(k.CHUNK, i)), this.monitor.recordProbeSent(s);
         } catch {
         }
       }, e);
@@ -4498,7 +4498,7 @@ class Ts {
       if (!this._mqttTransport || !this._mqttTransport.connected) return;
       const n = at(performance.now());
       try {
-        await this._mqttTransport.send(M(k.CHUNK, n)), this.monitor.recordProbeSent(t);
+        await this._mqttTransport.send(q(k.CHUNK, n)), this.monitor.recordProbeSent(t);
       } catch {
       }
     }, e);
@@ -4547,7 +4547,7 @@ class Js {
   _connectBroker(e) {
     const t = new WebSocket(e.config.brokerUrl, ["mqtt"]);
     t.binaryType = "arraybuffer", e.ws = t, t.onopen = () => {
-      t.send(Me(
+      t.send(qe(
         e.clientId,
         e.config.username || null,
         e.config.password || null,
@@ -4577,7 +4577,7 @@ class Js {
             ((r = e.ws) == null ? void 0 : r.readyState) === WebSocket.OPEN && e.ws.send(Fe());
           }, (e.config.keepalive || 30) * 1e3 * 0.75);
           const n = e.config.topics || [`${e.config.topicPrefix || "qdp"}/#`], i = ++e.packetId & 65535 || 1;
-          e.ws.send(qe(i, n, e.config.qos || 1)), this.onOpen && this.onOpen(e.index);
+          e.ws.send(Le(i, n, e.config.qos || 1)), this.onOpen && this.onOpen(e.index);
         }
         break;
       }
@@ -4594,7 +4594,7 @@ class Js {
     const n = this._topicRewrite ? this._topicRewrite(t) : t;
     for (const r of this._connections) {
       if (r === e || !r.connected) continue;
-      const o = ++r.packetId & 65535 || 1, a = Le(n, s, r.config.qos || 1, o);
+      const o = ++r.packetId & 65535 || 1, a = Me(n, s, r.config.qos || 1, o);
       ((i = r.ws) == null ? void 0 : i.readyState) === WebSocket.OPEN && r.ws.send(a);
     }
     this.onRelay && this.onRelay({ topic: n, sourceIndex: e.index });
@@ -4665,7 +4665,7 @@ class zs {
     });
   }
   _connectServer() {
-    return this._relay = new L({
+    return this._relay = new M({
       server: this._serverConfig,
       roomCode: this.roomCode,
       localPeerId: this.localPeerId,
@@ -4761,7 +4761,7 @@ class Xs {
     });
   }
   _connectServer() {
-    return this._relay = new L({
+    return this._relay = new M({
       server: this._serverConfig,
       roomCode: this.roomCode,
       localPeerId: this.localPeerId,
@@ -4811,7 +4811,7 @@ class Qs {
     return this._closed = !1, this.pollMode ? this._connectPolling() : this._connectSSE();
   }
   _connectServer() {
-    return this._relay = new L({
+    return this._relay = new M({
       server: this._serverConfig,
       roomCode: this.roomCode,
       localPeerId: this.localPeerId,
@@ -4904,7 +4904,7 @@ class Qs {
     };
   }
 }
-const Te = 3, Ds = 6, Ms = 7, ke = 8, xe = 9, Ae = 18, pt = 19, Ls = 22, Re = 6, ae = 20, ce = 21, qs = 25, Fs = 12, G = 554869826;
+const Te = 3, Ds = 6, qs = 7, ke = 8, xe = 9, Ae = 18, pt = 19, Ms = 22, Re = 6, ae = 20, ce = 21, Ls = 25, Fs = 12, G = 554869826;
 function he() {
   return crypto.getRandomValues(new Uint8Array(12));
 }
@@ -4971,7 +4971,7 @@ class Ys {
           }
         }
         const o = de(r);
-        if (o && o.type === (Ms | 256))
+        if (o && o.type === (qs | 256))
           for (const a of o.attributes)
             a.type === pt && this.onData && this.onData(a.value.buffer);
       }, this._ws.onclose = () => {
@@ -4982,7 +4982,7 @@ class Ys {
     });
   }
   _connectServer() {
-    return this._relay = new L({
+    return this._relay = new M({
       server: this._serverConfig,
       roomCode: this.roomCode,
       localPeerId: this.localPeerId,
@@ -5001,7 +5001,7 @@ class Ys {
   }
   async _allocate() {
     const e = he(), t = new Uint8Array([17, 0, 0, 0]), s = new TextEncoder().encode(this.username), n = [
-      { type: qs, value: t },
+      { type: Ls, value: t },
       { type: Re, value: s }
     ];
     this._realm && this._nonce && (n.push({ type: ae, value: new TextEncoder().encode(this._realm) }), n.push({ type: ce, value: new TextEncoder().encode(this._nonce) }));
@@ -5011,7 +5011,7 @@ class Ys {
         const h = new Uint8Array(a.data), l = de(h);
         if (l) {
           for (const d of l.attributes)
-            d.type === ae && (this._realm = new TextDecoder().decode(d.value)), d.type === ce && (this._nonce = new TextDecoder().decode(d.value)), d.type === Ls && (this._relayedAddr = d.value);
+            d.type === ae && (this._realm = new TextDecoder().decode(d.value)), d.type === ce && (this._nonce = new TextDecoder().decode(d.value)), d.type === Ms && (this._relayedAddr = d.value);
           l.type === (Te | 256) ? (this._ws.removeEventListener("message", o), r()) : l.type === (Te | 272) && this._realm && this._nonce && (this._ws.removeEventListener("message", o), this._allocate().then(r));
         }
       };
@@ -5144,7 +5144,7 @@ class Zs {
     });
   }
   _connectServer() {
-    return this._relay = new L({
+    return this._relay = new M({
       server: this._serverConfig,
       roomCode: this.roomCode,
       localPeerId: this.localPeerId,
@@ -5278,7 +5278,7 @@ class en {
     });
   }
   _connectServer() {
-    return this._relay = new L({
+    return this._relay = new M({
       server: this._serverConfig,
       roomCode: this.roomCode,
       localPeerId: this.localPeerId,
@@ -5404,7 +5404,7 @@ export {
   Vs as RelayChain,
   ss as SRTPTransport,
   Qs as SSETransport,
-  L as ServerRelay,
+  M as ServerRelay,
   yt as SignalManager,
   Jt as SignalRacer,
   Gs as SpeedRTC,
