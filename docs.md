@@ -1,4 +1,4 @@
-# QDP v3.0 — The Serverless P2P Suite
+# QDP v0.1 — The Serverless P2P Suite
 
 QDP (**Quick Datagram Protocol**) is a comprehensive **P2P Communication Suite** built on WebRTC data channel bonding with multi-transport signaling. It is fully serverless, supporting **WebTorrent trackers**, **MQTT brokers**, and **STUN servers** as interchangeable (and bondable) transport layers.
 
@@ -1227,3 +1227,116 @@ The relay server must:
 - Parse query parameters: `room`, `peer`, `remote`, `transport`
 - Forward binary messages between peers in the same room
 - Match peers by their `peer`/`remote` IDs (peer A's `remote` = peer B's `peer`)
+
+---
+
+## 15. ICE Server Bonding & Racing
+
+WebRTC uses **STUN** servers to discover your public IP and **TURN** servers as relay fallbacks. When multiple STUN/TURN servers are listed, the browser probes them all in parallel — but with no guarantee about which server responds first. The ICE server order in your config directly affects how fast candidates are gathered.
+
+**QDP solves this** with `IceRacer`: a lightweight pre-probe that fires a throw-away `RTCPeerConnection` against all configured servers simultaneously, ranks them by first-response time, and replaces the server list with the sorted result before the real connection starts. Fastest servers first, every time.
+
+```
+ICE Probe (throw-away PC, ~200–600ms):
+  stun.cloudflare.com      → candidate at +38ms  ← rank 1
+  stun.l.google.com        → candidate at +55ms  ← rank 2
+  global.stun.twilio.com   → candidate at +91ms  ← rank 3
+  stun.stunprotocol.org    → candidate at +140ms ← rank 4
+  openrelay.metered.ca     → candidate at +310ms ← rank 5 (TURN)
+
+Real Connection PC: [cloudflare, google, twilio, stunprotocol, openrelay, ...]
+Result: ICE candidates gathered from the fastest server ~50ms after gathering starts
+```
+
+QDP ships with an expanded default ICE server list covering 4 STUN providers (Google ×5 instances, Cloudflare, Twilio, stunprotocol.org) plus Open Relay TURN for symmetric NAT fallback.
+
+### Enabling ICE Racing
+
+```javascript
+const rtc = new QDP({
+  iceRacing: true,
+  iceRacingTimeout: 1500,
+  iceRacingTopN: 3,
+});
+
+await rtc.warmup();
+await new Promise(r => setTimeout(r, 500));
+
+await rtc.createRoom();
+```
+
+If `warmup()` is not called, the probe runs inline at the start of `createRoom()` / `joinRoom()` and adds at most `iceRacingTimeout` ms to the connection setup.
+
+### ICE Racing Options
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `iceRacing` | boolean | `false` | Enable ICE server probing and sorting before each connection |
+| `iceRacingTimeout` | number | `1500` | Max milliseconds the probe waits for server responses |
+| `iceRacingTopN` | number | `0` | Keep only the N fastest servers; `0` = keep all (sorted) |
+
+### IceRacer Standalone
+
+Use `IceRacer` directly with any `RTCPeerConnection` — no QDP required:
+
+```javascript
+import { IceRacer } from 'qdp';
+
+const servers = [
+  { urls: 'stun:stun.l.google.com:19302' },
+  { urls: 'stun:stun.cloudflare.com:3478' },
+  { urls: 'stun:global.stun.twilio.com:3478' },
+  { urls: 'stun:stun.stunprotocol.org:3478' },
+];
+const ranked = await IceRacer.probe(servers, {
+  timeout: 1000,
+  topN: 2,
+});
+
+console.log('Fastest servers:', ranked);
+
+const pc = new RTCPeerConnection({ iceServers: ranked });
+```
+
+### How the Probe Works
+
+1. Creates a minimal `RTCPeerConnection` with all configured servers and `iceCandidatePoolSize: 0`
+2. Opens a dummy data channel to trigger ICE gathering
+3. Sets a local SDP offer to start gathering
+4. Listens for `onicecandidate` events — each `srflx` (STUN) and `relay` (TURN) candidate carries a `candidate.url` field identifying which server produced it
+5. Records server entries in order of first response
+6. Closes the probe PC and returns the sorted list
+
+The probe PC never connects to any peer — it is discarded immediately after gathering. The entire probe completes in the time it takes the fastest STUN server to respond (typically 30–150ms on a good connection).
+
+### Default ICE Server List
+
+QDP's default `PUBLIC_ICE_SERVERS` covers four independent STUN providers:
+
+| Provider | URLs | Notes |
+|---|---|---|
+| Google | `stun.l.google.com:19302` through `stun4.l.google.com:19302` | 5 geo-distributed instances |
+| Cloudflare | `stun.cloudflare.com:3478` | Anycast edge — typically fastest |
+| Twilio | `global.stun.twilio.com:3478` | Global edge network |
+| stunprotocol.org | `stun.stunprotocol.org:3478` | Independent fallback |
+| Open Relay | `openrelay.metered.ca` | TURN relay for symmetric NAT (4 endpoints) |
+
+With `iceRacing: true`, QDP probes all five entries in parallel and reorders by response time. On most networks, Cloudflare or Google respond within ~40–80ms, so the real connection's first ICE candidate arrives in under 100ms after gathering starts.
+
+### Custom ICE Servers with Racing
+
+You can provide a large custom list and let IceRacer trim it to the fastest N:
+
+```javascript
+const rtc = new QDP({
+  iceServers: [
+    { urls: 'stun:stun.cloudflare.com:3478' },
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:global.stun.twilio.com:3478' },
+    { urls: 'stun:stun.stunprotocol.org:3478' },
+    { urls: 'turn:turn.mycompany.com:3478', username: 'user', credential: 'pass' },
+  ],
+  iceRacing: true,
+  iceRacingTopN: 2,
+});
+```
