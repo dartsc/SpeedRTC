@@ -1,8 +1,8 @@
-var Mt = Object.defineProperty;
-var Lt = (c, e, t) => e in c ? Mt(c, e, { enumerable: !0, configurable: !0, writable: !0, value: t }) : c[e] = t;
-var re = (c, e, t) => Lt(c, typeof e != "symbol" ? e + "" : e, t);
-class Ft {
-  constructor(e, { channelCount: t = 4, ordered: s = !1, protocol: n = "qdp" } = {}) {
+var Lt = Object.defineProperty;
+var Ft = (c, e, t) => e in c ? Lt(c, e, { enumerable: !0, configurable: !0, writable: !0, value: t }) : c[e] = t;
+var re = (c, e, t) => Ft(c, typeof e != "symbol" ? e + "" : e, t);
+class Bt {
+  constructor(e, { channelCount: t = 4, ordered: s = !1, protocol: n = "uqdp" } = {}) {
     this.pc = e, this.channelCount = t, this.ordered = s, this.protocol = n, this.channels = [], this.openChannels = /* @__PURE__ */ new Set(), this._rrIndex = 0, this._openArray = [], this._openArrayDirty = !0, this._onMessage = null, this._onOpen = null, this._onClose = null;
   }
   onMessage(e) {
@@ -16,7 +16,7 @@ class Ft {
   }
   createChannels() {
     for (let e = 0; e < this.channelCount; e++) {
-      const t = `qdp-${e}`, s = this.pc.createDataChannel(t, {
+      const t = `uqdp-${e}`, s = this.pc.createDataChannel(t, {
         ordered: this.ordered,
         protocol: this.protocol,
         id: e,
@@ -39,7 +39,7 @@ class Ft {
       const n = t[this._rrIndex % t.length];
       this._rrIndex = (this._rrIndex + 1) % t.length;
       const i = this.channels[n];
-      if (i.bufferedAmount < 524288)
+      if (i.bufferedAmount < 2097152)
         return i.send(e), n;
     }
     return -1;
@@ -47,9 +47,25 @@ class Ft {
   async sendOnChannel(e, t) {
     await this._waitForBuffer(e), this.channels[e].send(t);
   }
+  async sendManyOnChannel(e, t, s = null) {
+    const n = this.channels[e];
+    if (!n || n.readyState !== "open")
+      throw new Error("DataChannelPool: channel is not open");
+    for (const i of t) {
+      await this._waitForBuffer(e);
+      const r = this.channels[e];
+      if (!r || r.readyState !== "open")
+        throw new Error("DataChannelPool: channel closed while sending");
+      r.send(i), s && s(i, e);
+    }
+  }
+  getBufferedAmount(e) {
+    var t;
+    return ((t = this.channels[e]) == null ? void 0 : t.bufferedAmount) ?? 1 / 0;
+  }
   hasAvailableChannel() {
     for (const e of this.openChannels)
-      if (this.channels[e].bufferedAmount < 524288)
+      if (this.channels[e].bufferedAmount < 2097152)
         return !0;
     return !1;
   }
@@ -74,7 +90,7 @@ class Ft {
       this.openChannels.delete(t), this._openArrayDirty = !0, this._onClose && this._onClose(t);
     }, e.onmessage = (s) => {
       this._onMessage && this._onMessage(t, s.data);
-    }, e.bufferedAmountLowThreshold = 131072;
+    }, e.bufferedAmountLowThreshold = 524288;
   }
   async _pickChannel() {
     const e = this._getOpenArray();
@@ -87,7 +103,7 @@ class Ft {
       }), this._pickChannel();
     for (let s = 0; s < e.length; s++) {
       const n = e[this._rrIndex % e.length];
-      if (this._rrIndex = (this._rrIndex + 1) % e.length, this.channels[n].bufferedAmount < 524288)
+      if (this._rrIndex = (this._rrIndex + 1) % e.length, this.channels[n].bufferedAmount < 2097152)
         return n;
     }
     const t = e[0];
@@ -96,7 +112,7 @@ class Ft {
   _waitForBuffer(e) {
     return new Promise((t) => {
       const s = this.channels[e];
-      if (!s || s.bufferedAmount < 524288) {
+      if (!s || s.bufferedAmount < 2097152) {
         t();
         return;
       }
@@ -105,11 +121,11 @@ class Ft {
       };
       s.addEventListener("bufferedamountlow", n), setTimeout(() => {
         s.removeEventListener("bufferedamountlow", n), t();
-      }, 1500);
+      }, 100);
     });
   }
 }
-class Bt {
+class Nt {
   static async probe(e, { timeout: t = 1500, topN: s = 0 } = {}) {
     if (!(e != null && e.length) || e.length <= 1) return e;
     const n = /* @__PURE__ */ new Map();
@@ -146,8 +162,8 @@ class Bt {
     return s > 0 ? h.slice(0, s) : h;
   }
 }
-const Xe = 0.3, Nt = 2e4, Wt = 8e3, Ht = 5e3, $t = 4, jt = 1;
-class Kt {
+const Xe = 0.3, Wt = 2e4, Ht = 8e3, $t = 5e3, jt = 4, Kt = 1;
+class Vt {
   constructor(e) {
     this.url = e, this.ws = null, this.connected = !1, this.latency = 0, this.load = 0, this.score = 1, this._lastSentAt = 0, this._awaitingResponse = !1, this._onMessage = null;
   }
@@ -160,7 +176,7 @@ class Kt {
         } catch {
         }
         t(new Error(`timeout: ${this.url}`));
-      }, Ht);
+      }, $t);
       try {
         this.ws = new WebSocket(this.url), this.ws.onopen = () => {
           clearTimeout(s), this.connected = !0, e(this);
@@ -221,7 +237,7 @@ class Kt {
 }
 class yt {
   constructor(e) {
-    this.nodes = e.map((t) => new Kt(t)), this._active = [], this._primary = null, this._pingTimer = null, this._rebalanceTimer = null, this._closed = !1, this.onMessage = null, this.onRebalance = null, this.onNodeJoined = null;
+    this.nodes = e.map((t) => new Vt(t)), this._active = [], this._primary = null, this._pingTimer = null, this._rebalanceTimer = null, this._closed = !1, this.onMessage = null, this.onRebalance = null, this.onNodeJoined = null;
   }
   get connected() {
     return this._active.some((e) => e.connected);
@@ -233,7 +249,7 @@ class yt {
     return new Promise((e, t) => {
       let s = 0, n = !1;
       const i = this.nodes.length, r = () => {
-        if (!n && this._active.length >= jt) {
+        if (!n && this._active.length >= Kt) {
           n = !0, this._primary = this._best(), this._startTimers(), e(this._active.length);
           return;
         }
@@ -245,7 +261,7 @@ class yt {
             a.close(), r();
             return;
           }
-          this._active.length < $t ? (this._active.push(a), n && (this._rebalance(), this.onNodeJoined && this.onNodeJoined(a.url))) : a.close(), r();
+          this._active.length < jt ? (this._active.push(a), n && (this._rebalance(), this.onNodeJoined && this.onNodeJoined(a.url))) : a.close(), r();
         }).catch(() => {
           s++, r();
         });
@@ -289,9 +305,9 @@ class yt {
     this._pingTimer = setInterval(() => {
       for (const e of this._active)
         e.connected && !e._awaitingResponse && (e._lastSentAt = performance.now(), e._awaitingResponse = !0);
-    }, Wt), this._rebalanceTimer = setInterval(() => {
+    }, Ht), this._rebalanceTimer = setInterval(() => {
       this._rebalance();
-    }, Nt);
+    }, Wt);
   }
   _stopTimers() {
     clearInterval(this._pingTimer), clearInterval(this._rebalanceTimer), this._pingTimer = null, this._rebalanceTimer = null;
@@ -306,7 +322,6 @@ const Qe = [
   "wss://peertube2.cpy.re:443/tracker/socket",
   "wss://video.blender.org:443/tracker/socket",
   "wss://fediverse.tv:443/tracker/socket",
-  "wss://tracker.files.fm:7073/announce",
   "wss://peertube.cpy.re:443/tracker/socket",
   "wss://videos.pair2jeux.tube:443/tracker/socket",
   "wss://videos.npo.city:443/tracker/socket",
@@ -355,11 +370,11 @@ class fe {
       peer_id: this.peerId
     };
     if (this.remotePeerId) {
-      s.to_peer_id = this.remotePeerId, s.answer = { type: "answer", sdp: t }, s.offer_id = "qdp-relay";
+      s.to_peer_id = this.remotePeerId, s.answer = { type: "answer", sdp: t }, s.offer_id = "uqdp-relay";
       const n = JSON.stringify(s);
       this._preferredNodeUrl ? this._manager.sendTo(this._preferredNodeUrl, n) || this._manager.send(n) : this._manager.send(n);
     } else this.isOfferer && e.type === "offer" && (this._localOfferPayload = t, s.numwant = 1, s.offers = [{
-      offer_id: "qdp-relay",
+      offer_id: "uqdp-relay",
       offer: { type: "offer", sdp: t }
     }], this._manager.broadcast(JSON.stringify(s)));
   }
@@ -370,7 +385,7 @@ class fe {
       peer_id: this.peerId,
       numwant: 1
     };
-    this.isOfferer && this._localOfferPayload && (t.offers = [{ offer_id: "qdp-relay", offer: { type: "offer", sdp: this._localOfferPayload } }]);
+    this.isOfferer && this._localOfferPayload && (t.offers = [{ offer_id: "uqdp-relay", offer: { type: "offer", sdp: this._localOfferPayload } }]);
     const s = JSON.stringify(t);
     e ? this._manager.broadcast(s) : this._manager.send(s);
   }
@@ -412,7 +427,7 @@ class fe {
   }
 }
 re(fe, "DEFAULT_TRACKER_URLS", Qe);
-const ye = "https://oauth2.googleapis.com/token", Ye = "https://www.googleapis.com/auth/spreadsheets", Vt = "https://accounts.google.com/gsi/client";
+const ye = "https://oauth2.googleapis.com/token", Ye = "https://www.googleapis.com/auth/spreadsheets", Gt = "https://accounts.google.com/gsi/client";
 let Ze = !1, oe = null;
 const we = /* @__PURE__ */ new Map();
 function et(c) {
@@ -656,7 +671,7 @@ class w {
   static _loadGisScript() {
     return Ze && typeof google < "u" && google.accounts ? Promise.resolve() : oe || (oe = new Promise((e, t) => {
       const s = document.createElement("script");
-      s.src = Vt, s.async = !0, s.onload = () => {
+      s.src = Gt, s.async = !0, s.onload = () => {
         Ze = !0, e();
       }, s.onerror = () => t(new Error("[DriveSignal] Failed to load Google Identity Services script")), document.head.appendChild(s);
     }), oe);
@@ -889,7 +904,7 @@ const T = {
   PINGREQ: 12,
   DISCONNECT: 14
 };
-function P(c) {
+function v(c) {
   const e = new TextEncoder().encode(c), t = new Uint8Array(2 + e.length);
   return t[0] = e.length >> 8 & 255, t[1] = e.length & 255, t.set(e, 2), t;
 }
@@ -910,10 +925,10 @@ function Ue(c, e) {
   return { value: t, nextOffset: n };
 }
 function qe(c, e, t, s) {
-  const n = P("MQTT"), i = 4;
+  const n = v("MQTT"), i = 4;
   let r = 2;
   e && (r |= 128), t && (r |= 64);
-  const o = P(c), a = e ? P(e) : new Uint8Array(0), h = t ? P(t) : new Uint8Array(0), l = new Uint8Array([
+  const o = v(c), a = e ? v(e) : new Uint8Array(0), h = t ? v(t) : new Uint8Array(0), l = new Uint8Array([
     ...n,
     i,
     r,
@@ -922,8 +937,8 @@ function qe(c, e, t, s) {
   ]), d = new Uint8Array([...o, ...a, ...h]), f = l.length + d.length, u = B(f), _ = new Uint8Array(1 + u.length + f);
   return _[0] = T.CONNECT << 4, _.set(u, 1), _.set(l, 1 + u.length), _.set(d, 1 + u.length + l.length), _;
 }
-function Me(c, e, t, s) {
-  const n = P(c), i = typeof e == "string" ? new TextEncoder().encode(e) : new Uint8Array(e), r = t > 0, a = n.length + (r ? 2 : 0) + i.length, h = B(a), l = new Uint8Array(1 + h.length + a);
+function De(c, e, t, s) {
+  const n = v(c), i = typeof e == "string" ? new TextEncoder().encode(e) : new Uint8Array(e), r = t > 0, a = n.length + (r ? 2 : 0) + i.length, h = B(a), l = new Uint8Array(1 + h.length + a);
   let d = T.PUBLISH << 4;
   t === 1 ? d |= 2 : t === 2 && (d |= 4), l[0] = d, l.set(h, 1);
   let f = 1 + h.length;
@@ -932,7 +947,7 @@ function Me(c, e, t, s) {
 function Le(c, e, t) {
   let s = 0;
   const n = e.map((h) => {
-    const l = P(h);
+    const l = v(h);
     return s += l.length + 1, l;
   }), i = 2 + s, r = B(i), o = new Uint8Array(1 + r.length + i);
   o[0] = T.SUBSCRIBE << 4 | 2, o.set(r, 1);
@@ -1013,7 +1028,7 @@ function $e(c) {
           break;
         }
         case "utf8": {
-          const l = P(o), d = new Uint8Array(1 + l.length);
+          const l = v(o), d = new Uint8Array(1 + l.length);
           d[0] = a, d.set(l, 1), e.push(d);
           break;
         }
@@ -1025,7 +1040,7 @@ function $e(c) {
         case "pair": {
           if (Array.isArray(o))
             for (const [l, d] of o) {
-              const f = P(l), u = P(d), _ = new Uint8Array(1 + f.length + u.length);
+              const f = v(l), u = v(d), _ = new Uint8Array(1 + f.length + u.length);
               _[0] = a, _.set(f, 1), _.set(u, 1 + f.length), e.push(_);
             }
           break;
@@ -1090,10 +1105,10 @@ function wt(c, e) {
   return { props: i, nextOffset: n };
 }
 function bt(c, e, t, s, n = {}) {
-  const i = P("MQTT"), r = 5;
+  const i = v("MQTT"), r = 5;
   let o = 2;
   e && (o |= 128), t && (o |= 64);
-  const a = P(c), h = e ? P(e) : new Uint8Array(0), l = t ? P(t) : new Uint8Array(0), d = $e(n), f = new Uint8Array([
+  const a = v(c), h = e ? v(e) : new Uint8Array(0), l = t ? v(t) : new Uint8Array(0), d = $e(n), f = new Uint8Array([
     ...i,
     r,
     o,
@@ -1105,7 +1120,7 @@ function bt(c, e, t, s, n = {}) {
   return b.set(f, y), y += f.length, b.set(d, y), y += d.length, b.set(u, y), b;
 }
 function Oe(c, e, t, s, n = {}) {
-  const i = P(c), r = typeof e == "string" ? new TextEncoder().encode(e) : new Uint8Array(e), o = $e(n), a = t > 0, l = i.length + (a ? 2 : 0) + o.length + r.length, d = B(l), f = new Uint8Array(1 + d.length + l);
+  const i = v(c), r = typeof e == "string" ? new TextEncoder().encode(e) : new Uint8Array(e), o = $e(n), a = t > 0, l = i.length + (a ? 2 : 0) + o.length + r.length, d = B(l), f = new Uint8Array(1 + d.length + l);
   let u = T.PUBLISH << 4;
   t === 1 ? u |= 2 : t === 2 && (u |= 4), f[0] = u, f.set(d, 1);
   let _ = 1 + d.length;
@@ -1115,7 +1130,7 @@ function Ct(c, e, t, s = {}) {
   const n = $e(s);
   let i = 0;
   const r = e.map((d) => {
-    const f = P(d);
+    const f = v(d);
     return i += f.length + 1, f;
   }), o = 2 + n.length + i, a = B(o), h = new Uint8Array(1 + a.length + o);
   h[0] = T.SUBSCRIBE << 4 | 2, h.set(a, 1);
@@ -1144,9 +1159,9 @@ function It(c, e, t, s) {
   const l = e.slice(i, t + s);
   return { topic: o, payload: l, qos: n, packetId: a, props: h.props };
 }
-class Gt {
+class Jt {
   constructor(e, t, s = {}) {
-    this.roomCode = e, this.isOfferer = t, this.brokerUrl = s.brokerUrl, this.username = s.username || null, this.password = s.password || null, this.qos = s.qos ?? 1, this.keepalive = s.keepalive ?? 30, this.topicPrefix = s.topicPrefix || "qdp", this.protocolVersion = s.protocolVersion || 4, this.sharedGroup = s.sharedGroup || null, this.peerId = s.clientId || "qdp-" + Array.from(crypto.getRandomValues(new Uint8Array(8))).map((n) => n.toString(16).padStart(2, "0")).join(""), this.remotePeerId = null, this.connected = !1, this.onMessage = null, this.onOpen = null, this.onClose = null, this._ws = null, this._packetId = 0, this._pingInterval = null, this._announceInterval = null, this._localOfferPayload = null, this._closed = !1, this._recvBuf = new Uint8Array(0);
+    this.roomCode = e, this.isOfferer = t, this.brokerUrl = s.brokerUrl, this.username = s.username || null, this.password = s.password || null, this.qos = s.qos ?? 1, this.keepalive = s.keepalive ?? 30, this.topicPrefix = s.topicPrefix || "uqdp", this.protocolVersion = s.protocolVersion || 4, this.sharedGroup = s.sharedGroup || null, this.peerId = s.clientId || "uqdp-" + Array.from(crypto.getRandomValues(new Uint8Array(8))).map((n) => n.toString(16).padStart(2, "0")).join(""), this.remotePeerId = null, this.connected = !1, this.onMessage = null, this.onOpen = null, this.onClose = null, this._ws = null, this._packetId = 0, this._pingInterval = null, this._announceInterval = null, this._localOfferPayload = null, this._closed = !1, this._recvBuf = new Uint8Array(0);
   }
   get sockets() {
     return this._ws ? [this._ws] : [];
@@ -1197,7 +1212,7 @@ class Gt {
   _publish(e, t) {
     if (!this._ws || this._ws.readyState !== WebSocket.OPEN) return;
     const s = this.qos > 0 ? this._nextPacketId() : 0;
-    this.protocolVersion === 5 ? this._ws.send(Oe(e, t, this.qos, s, {})) : this._ws.send(Me(e, t, this.qos, s));
+    this.protocolVersion === 5 ? this._ws.send(Oe(e, t, this.qos, s, {})) : this._ws.send(De(e, t, this.qos, s));
   }
   _subscribe(e) {
     if (!this._ws || this._ws.readyState !== WebSocket.OPEN) return;
@@ -1313,11 +1328,11 @@ class L {
     };
   }
 }
-const Jt = 128 * 1024;
-class vt {
+const zt = 128 * 1024;
+class Pt {
   constructor(e = {}) {
     re(this, "_fragAssembly", /* @__PURE__ */ new Map());
-    this.brokerUrl = e.brokerUrl, this.roomCode = e.roomCode, this.localPeerId = e.localPeerId, this.remotePeerId = e.remotePeerId, this.username = e.username || null, this.password = e.password || null, this.qos = e.qos ?? 1, this.keepalive = e.keepalive ?? 30, this.topicPrefix = e.topicPrefix || "qdp", this.maxPayload = e.maxPayload || Jt, this.protocolVersion = e.protocolVersion || 4, this._topicAlias = e.topicAlias || !1, this._messageExpiry = e.messageExpiry || 0, this._e2e = e.e2e || null, this._serverConfig = e.server || null, this._relay = null, this.connected = !1, this.onData = e.onData || null, this.onOpen = e.onOpen || null, this.onClose = e.onClose || null, this._ws = null, this._packetId = 0, this._pingInterval = null, this._closed = !1, this._recvBuf = new Uint8Array(0), this._sendQueue = [], this._clientId = "qdp-t-" + Array.from(crypto.getRandomValues(new Uint8Array(6))).map((t) => t.toString(16).padStart(2, "0")).join(""), this._outboundAliasSet = !1, this._inboundAliases = /* @__PURE__ */ new Map(), this._serverTopicAliasMax = 0;
+    this.brokerUrl = e.brokerUrl, this.roomCode = e.roomCode, this.localPeerId = e.localPeerId, this.remotePeerId = e.remotePeerId, this.username = e.username || null, this.password = e.password || null, this.qos = e.qos ?? 1, this.keepalive = e.keepalive ?? 30, this.topicPrefix = e.topicPrefix || "uqdp", this.maxPayload = e.maxPayload || zt, this.protocolVersion = e.protocolVersion || 4, this._topicAlias = e.topicAlias || !1, this._messageExpiry = e.messageExpiry || 0, this._e2e = e.e2e || null, this._serverConfig = e.server || null, this._relay = null, this.connected = !1, this.onData = e.onData || null, this.onOpen = e.onOpen || null, this.onClose = e.onClose || null, this._ws = null, this._packetId = 0, this._pingInterval = null, this._closed = !1, this._recvBuf = new Uint8Array(0), this._sendQueue = [], this._clientId = "uqdp-t-" + Array.from(crypto.getRandomValues(new Uint8Array(6))).map((t) => t.toString(16).padStart(2, "0")).join(""), this._outboundAliasSet = !1, this._inboundAliases = /* @__PURE__ */ new Map(), this._serverTopicAliasMax = 0;
   }
   get _sendTopic() {
     return `${this.topicPrefix}/${this.roomCode}/data/${this.remotePeerId}`;
@@ -1395,7 +1410,7 @@ class vt {
       } else
         this._ws.send(Oe(e, t, this.qos, s, n));
     } else
-      this._ws.send(Me(e, t, this.qos, s));
+      this._ws.send(De(e, t, this.qos, s));
   }
   _subscribe(e) {
     if (!this._ws || this._ws.readyState !== WebSocket.OPEN) return;
@@ -1503,7 +1518,7 @@ class vt {
     });
   }
 }
-class zt {
+class Xt {
   constructor(e = []) {
     var t;
     this._backends = e, this._winner = null, this._settled = !1, this._signalingDone = !1, this.onMessage = null, this.onOpen = null, this.onClose = null, this.connected = !1, this.remotePeerId = null, this.peerId = ((t = e[0]) == null ? void 0 : t.peerId) || null, this._stats = e.map((s, n) => ({
@@ -1633,7 +1648,7 @@ class st {
     return await crypto.subtle.decrypt({ name: "AES-GCM", iv: s }, this._sharedKey, n);
   }
 }
-class Xt {
+class Qt {
   constructor(e = {}) {
     this.url = e.url, this.roomCode = e.roomCode, this.localPeerId = e.localPeerId, this.remotePeerId = e.remotePeerId, this.reliable = e.reliable ?? !1, this._serverConfig = e.server || null, this._relay = null, this.connected = !1, this.onData = e.onData || null, this.onOpen = e.onOpen || null, this.onClose = e.onClose || null, this._transport = null, this._writer = null, this._datagramWriter = null, this._closed = !1, this._stream = null;
   }
@@ -1751,9 +1766,9 @@ class Xt {
     }), await this._relay.connect();
   }
 }
-class Qt {
+class Yt {
   constructor(e, t, s = []) {
-    this.roomCode = e, this.isOfferer = t, this.dhtNodes = s, this.peerId = "qdp-dht-" + Array.from(crypto.getRandomValues(new Uint8Array(8))).map((n) => n.toString(16).padStart(2, "0")).join(""), this.remotePeerId = null, this.connected = !1, this.onMessage = null, this.onOpen = null, this.onClose = null, this._sockets = [], this._closed = !1, this._lookupInterval = null, this._keyHash = null, this._localPayload = null;
+    this.roomCode = e, this.isOfferer = t, this.dhtNodes = s, this.peerId = "uqdp-dht-" + Array.from(crypto.getRandomValues(new Uint8Array(8))).map((n) => n.toString(16).padStart(2, "0")).join(""), this.remotePeerId = null, this.connected = !1, this.onMessage = null, this.onOpen = null, this.onClose = null, this._sockets = [], this._closed = !1, this._lookupInterval = null, this._keyHash = null, this._localPayload = null;
   }
   get sockets() {
     return this._sockets.filter((e) => e.readyState === WebSocket.OPEN);
@@ -1859,9 +1874,9 @@ class Qt {
     return Array.from(new Uint8Array(s)).map((n) => n.toString(16).padStart(2, "0")).join("");
   }
 }
-class Yt {
+class Zt {
   constructor(e = {}) {
-    this._brokerUrls = e.brokerUrls || [], this._roomCode = e.roomCode, this._localPeerId = e.localPeerId, this._remotePeerId = e.remotePeerId, this._username = e.username || null, this._password = e.password || null, this._qos = e.qos ?? 1, this._keepalive = e.keepalive ?? 30, this._topicPrefix = e.topicPrefix || "qdp", this._maxPayload = e.maxPayload, this._protocolVersion = e.protocolVersion, this._topicAlias = e.topicAlias, this._messageExpiry = e.messageExpiry, this._e2e = e.e2e, this.connected = !1, this.onData = e.onData || null, this.onOpen = e.onOpen || null, this.onClose = e.onClose || null, this.onBrokerChange = e.onBrokerChange || null, this._transports = [], this._activeBrokerIndex = -1, this._closed = !1, this._receivedSet = /* @__PURE__ */ new Set(), this._dupCleanupTimer = null;
+    this._brokerUrls = e.brokerUrls || [], this._roomCode = e.roomCode, this._localPeerId = e.localPeerId, this._remotePeerId = e.remotePeerId, this._username = e.username || null, this._password = e.password || null, this._qos = e.qos ?? 1, this._keepalive = e.keepalive ?? 30, this._topicPrefix = e.topicPrefix || "uqdp", this._maxPayload = e.maxPayload, this._protocolVersion = e.protocolVersion, this._topicAlias = e.topicAlias, this._messageExpiry = e.messageExpiry, this._e2e = e.e2e, this.connected = !1, this.onData = e.onData || null, this.onOpen = e.onOpen || null, this.onClose = e.onClose || null, this.onBrokerChange = e.onBrokerChange || null, this._transports = [], this._activeBrokerIndex = -1, this._closed = !1, this._receivedSet = /* @__PURE__ */ new Set(), this._dupCleanupTimer = null;
   }
   get activeBrokerUrl() {
     return this._activeBrokerIndex >= 0 ? this._brokerUrls[this._activeBrokerIndex] : null;
@@ -1869,7 +1884,7 @@ class Yt {
   connect() {
     if (this._brokerUrls.length === 0) throw new Error("MQTTPool: no broker URLs");
     this._closed = !1, this._brokerUrls.forEach((e, t) => {
-      const s = new vt({
+      const s = new Pt({
         brokerUrl: e,
         roomCode: this._roomCode,
         localPeerId: this._localPeerId,
@@ -1950,8 +1965,8 @@ const q = {
   NATIVE_BRIDGE: "native-bridge",
   WASI: "wasi",
   PSEUDO_PING: "pseudo-ping"
-}, ue = 8, Pt = 8, Zt = 0, nt = 1400;
-function es(c) {
+}, ue = 8, vt = 8, es = 0, nt = 1400;
+function ts(c) {
   let e = 0;
   for (let t = 0; t < c.length - 1; t += 2)
     e += c[t] << 8 | c[t + 1];
@@ -1960,18 +1975,18 @@ function es(c) {
 }
 function be(c, e, t) {
   const s = new Uint8Array(ue + t.length);
-  s[0] = Pt, s[1] = 0, s[2] = 0, s[3] = 0, s[4] = c >> 8 & 255, s[5] = c & 255, s[6] = e >> 8 & 255, s[7] = e & 255, s.set(t, ue);
-  const n = es(s);
+  s[0] = vt, s[1] = 0, s[2] = 0, s[3] = 0, s[4] = c >> 8 & 255, s[5] = c & 255, s[6] = e >> 8 & 255, s[7] = e & 255, s.set(t, ue);
+  const n = ts(s);
   return s[2] = n >> 8 & 255, s[3] = n & 255, s;
 }
-function ts(c) {
+function ss(c) {
   if (c.length < ue) return null;
   const e = c[0];
-  if (e !== Zt && e !== Pt) return null;
+  if (e !== es && e !== vt) return null;
   const t = c[4] << 8 | c[5], s = c[6] << 8 | c[7], n = c.slice(ue);
   return { type: e, identifier: t, sequence: s, payload: n };
 }
-class ss {
+class ns {
   constructor(e = {}) {
     re(this, "_fragAssembly", /* @__PURE__ */ new Map());
     this.targetIp = e.targetIp, this.strategy = e.strategy || q.RELAY, this.relayUrl = e.relayUrl || null, this.nativeBridge = e.nativeBridge || null, this.identifier = e.identifier || Math.random() * 65535 | 0, this.roomCode = e.roomCode || null, this.localPeerId = e.localPeerId || null, this.remotePeerId = e.remotePeerId || null, this.pingInterval = e.pingInterval ?? 1e3, this._serverConfig = e.server || null, this._relay = null, this.connected = !1, this.onData = e.onData || null, this.onOpen = e.onOpen || null, this.onClose = e.onClose || null, this.onLatency = e.onLatency || null, this._ws = null, this._sequence = 0, this._closed = !1, this._pseudoPingTimer = null, this._pendingProbes = /* @__PURE__ */ new Map(), this._wasiSocket = null;
@@ -2173,10 +2188,10 @@ class ss {
       n();
       const i = performance.now() - e;
       this.onLatency && this.onLatency({ target: this.targetIp, latency: i, reachable: i < 1e3 });
-    }, t.src = `http://${this.targetIp}:${s}/__qdp_ping?t=${Date.now()}`;
+    }, t.src = `http://${this.targetIp}:${s}/__uqdp_ping?t=${Date.now()}`;
   }
   _handleIncomingPacket(e) {
-    const t = ts(e);
+    const t = ss(e);
     if (!t) {
       this.onData && this.onData(e.buffer);
       return;
@@ -2235,7 +2250,7 @@ class ss {
   }
 }
 const V = 4, it = 215, rt = 1200;
-class ns {
+class is {
   constructor(e = {}) {
     this.iceServers = e.iceServers || [{ urls: "stun:stun.l.google.com:19302" }], this.roomCode = e.roomCode || null, this.localPeerId = e.localPeerId || null, this.remotePeerId = e.remotePeerId || null, this.signaling = e.signaling || null, this.sampleRate = e.sampleRate || 48e3, this._serverConfig = e.server || null, this._relay = null, this.connected = !1, this.onData = e.onData || null, this.onOpen = e.onOpen || null, this.onClose = e.onClose || null, this.onLatency = e.onLatency || null, this._pc = null, this._sender = null, this._closed = !1, this._sequence = 0, this._audioCtx = null, this._sourceNode = null, this._scriptNode = null, this._sendQueue = [], this._fragAssembly = /* @__PURE__ */ new Map(), this._isOfferer = !1;
   }
@@ -2541,7 +2556,7 @@ class Tt {
     e.score = Math.max(0.01, t * 0.4 + s * 0.35 + n * 0.25);
   }
 }
-class is {
+class rs {
   constructor({ senders: e = [], linkIds: t = [], monitor: s = null } = {}) {
     this.senders = e, this.linkIds = t, this.monitor = s || new Tt();
     for (const n of this.linkIds)
@@ -2568,25 +2583,33 @@ class is {
   async sendChunks(e) {
     if (this.senders.length === 0)
       throw new Error("BondingEngine: no senders available");
+    if (e.length === 0) return;
     this._refreshWeights();
-    const t = this._buildSendPlan(e.length), s = [];
-    for (let n = 0; n < e.length; n++) {
-      const i = t[n], r = e[n], o = this.linkIds[i];
-      s.push(
-        this.senders[i](r).then(() => {
-          this.monitor.recordBytesSent(o, r.byteLength);
-        })
-      );
+    const t = this._buildSendPlan(e.length), s = Array.from({ length: this.senders.length }, () => []);
+    for (let i = 0; i < e.length; i++)
+      s[t[i]].push(e[i]);
+    const n = s.map((i, r) => i.length === 0 ? null : this._sendChunkGroup(r, i));
+    await Promise.all(n);
+  }
+  async _sendChunkGroup(e, t) {
+    const s = this.senders[e], n = this.linkIds[e];
+    if (typeof s.sendMany == "function") {
+      await s.sendMany(t, (i) => {
+        this.monitor.recordBytesSent(n, i.byteLength);
+      });
+      return;
     }
-    await Promise.all(s);
+    for (const i of t)
+      await s(i), this.monitor.recordBytesSent(n, i.byteLength);
   }
   async sendSingle(e) {
+    if (this.senders.length === 0)
+      throw new Error("BondingEngine: no senders available");
     if (this.senders.length === 1) {
       await this.senders[0](e), this.monitor.recordBytesSent(this.linkIds[0], e.byteLength);
       return;
     }
-    this._rrSingleIdx || (this._rrSingleIdx = 0), this._rrSingleIdx = (this._rrSingleIdx + 1) % this.senders.length;
-    const t = this._rrSingleIdx;
+    const t = this._pickLeastBufferedSender();
     await this.senders[t](e), this.monitor.recordBytesSent(this.linkIds[t], e.byteLength);
   }
   receiveChunk(e) {
@@ -2643,6 +2666,16 @@ class is {
     }
     return 0;
   }
+  _pickLeastBufferedSender() {
+    let e = -1, t = 1 / 0;
+    for (let s = 0; s < this.senders.length; s++) {
+      const n = this.senders[s].getBufferedAmount;
+      if (typeof n != "function") continue;
+      const i = n();
+      i < t && (t = i, e = s);
+    }
+    return e >= 0 ? e : (this._rrSingleIdx || (this._rrSingleIdx = 0), this._rrSingleIdx = (this._rrSingleIdx + 1) % this.senders.length, this._rrSingleIdx);
+  }
   _assemble(e) {
     let t = 0;
     for (let i = 0; i < e.totalChunks; i++) {
@@ -2669,7 +2702,7 @@ function je({ transferId: c, chunkIndex: e, totalChunks: t, flags: s, payload: n
   const i = n ? n instanceof Uint8Array ? n : new Uint8Array(n) : new Uint8Array(0), r = new ArrayBuffer(_e + i.byteLength), o = new DataView(r);
   return o.setUint32(0, c, !0), o.setUint32(4, e, !0), o.setUint32(8, t, !0), o.setUint8(12, s), i.byteLength > 0 && new Uint8Array(r, _e).set(i), r;
 }
-function rs(c) {
+function os(c) {
   const e = new DataView(c);
   return {
     transferId: e.getUint32(0, !0),
@@ -2682,7 +2715,7 @@ function rs(c) {
 function ot(c, e, t = kt) {
   const s = new Uint8Array(c), n = Math.ceil(s.byteLength / t), i = [];
   for (let r = 0; r < n; r++) {
-    const o = r * t, a = Math.min(o + t, s.byteLength), h = s.slice(o, a);
+    const o = r * t, a = Math.min(o + t, s.byteLength), h = s.subarray(o, a);
     i.push(
       je({
         transferId: e,
@@ -2695,7 +2728,7 @@ function ot(c, e, t = kt) {
   }
   return i;
 }
-function os(c, e) {
+function as(c, e) {
   const t = JSON.stringify(e), n = new TextEncoder().encode(t);
   return je({
     transferId: c,
@@ -2705,7 +2738,7 @@ function os(c, e) {
     payload: n
   });
 }
-function as(c) {
+function cs(c) {
   const e = new TextDecoder();
   return JSON.parse(e.decode(c));
 }
@@ -2719,11 +2752,11 @@ function at(c) {
     payload: e
   });
 }
-function cs(c) {
+function hs(c) {
   return new DataView(c.buffer, c.byteOffset, c.byteLength).getFloat64(0, !0);
 }
-const ct = 1, ht = 2, hs = new TextEncoder(), ls = new TextDecoder();
-class ds {
+const ct = 1, ht = 2, ls = new TextEncoder(), ds = new TextDecoder();
+class fs {
   constructor(e) {
     this._send = e, this._listeners = {};
   }
@@ -2743,7 +2776,7 @@ class ds {
         }
   }
   async send(e) {
-    const t = hs.encode(e), s = new ArrayBuffer(1 + t.length);
+    const t = ls.encode(e), s = new ArrayBuffer(1 + t.length);
     new Uint8Array(s)[0] = ct, new Uint8Array(s, 1).set(t), await this._send(s);
   }
   async sendBinary(e) {
@@ -2753,7 +2786,7 @@ class ds {
   handleIncoming(e) {
     const t = new Uint8Array(e), s = t[0];
     if (s === ct) {
-      const n = ls.decode(t.slice(1));
+      const n = ds.decode(t.slice(1));
       this._emit("text", n);
     } else s === ht && this._emit("binary", e.slice(1));
   }
@@ -2765,7 +2798,7 @@ const S = {
   END: 4,
   ERROR: 5
 }, ne = new TextEncoder(), ee = new TextDecoder();
-function fs(c, e, t, s = {}, n = null) {
+function us(c, e, t, s = {}, n = null) {
   const i = ne.encode(e), r = ne.encode(t), o = ne.encode(JSON.stringify(s)), a = n ? new Uint8Array(n) : new Uint8Array(0), h = 6 + i.length + 2 + r.length + 4 + o.length + a.length, l = new ArrayBuffer(h), d = new DataView(l), f = new Uint8Array(l);
   let u = 0;
   return d.setUint8(u, S.REQUEST), u += 1, d.setUint32(u, c, !0), u += 4, d.setUint8(u, i.length), u += 1, f.set(i, u), u += i.length, d.setUint16(u, r.length, !0), u += 2, f.set(r, u), u += r.length, d.setUint32(u, o.length, !0), u += 4, f.set(o, u), u += o.length, a.length > 0 && f.set(a, u), l;
@@ -2828,12 +2861,12 @@ function pe(c) {
       return { type: s, requestId: n };
   }
 }
-class us {
+class _s {
   constructor(e) {
     this._map = {}, this._internal = /* @__PURE__ */ new Set();
     for (const [t, s] of Object.entries(e)) {
       const n = t.toLowerCase();
-      this._map[n] = s, n.startsWith("x-qdp-") && this._internal.add(n);
+      this._map[n] = s, n.startsWith("x-uqdp-") && this._internal.add(n);
     }
   }
   get(e) {
@@ -2862,8 +2895,8 @@ class us {
 `) : [];
   }
 }
-let _s = 1;
-class ps {
+let ps = 1;
+class ms {
   constructor() {
     this._cookies = [];
   }
@@ -2876,8 +2909,8 @@ class ps {
       const l = a.slice(0, h).trim(), d = a.slice(h + 1).trim();
       let f = n.hostname, u = "/", _ = null, p = !1, b = n.protocol === "https:";
       for (let m = 1; m < o.length; m++) {
-        const [W, v = ""] = o[m].split("=").map((R) => R.trim()), g = W.toLowerCase();
-        g === "domain" ? f = v.replace(/^\./, "") : g === "path" ? u = v || "/" : g === "expires" ? _ = new Date(v).getTime() : g === "max-age" ? _ = i + parseInt(v, 10) * 1e3 : g === "httponly" ? p = !0 : g === "secure" && (b = !0);
+        const [W, P = ""] = o[m].split("=").map((R) => R.trim()), g = W.toLowerCase();
+        g === "domain" ? f = P.replace(/^\./, "") : g === "path" ? u = P || "/" : g === "expires" ? _ = new Date(P).getTime() : g === "max-age" ? _ = i + parseInt(P, 10) * 1e3 : g === "httponly" ? p = !0 : g === "secure" && (b = !0);
       }
       if (_ !== null && _ < i) {
         this._cookies = this._cookies.filter((m) => !(m.name === l && m.domain === f && m.path === u));
@@ -2913,20 +2946,20 @@ class ps {
     }
   }
 }
-class ms {
+class gs {
   constructor(e) {
-    this._send = e, this._pending = /* @__PURE__ */ new Map(), this.cookieJar = new ps(), this._intercepted = !1, this._origFetch = null, this._origXhrOpen = null, this._origXhrSend = null, this._interceptTarget = null, this._interceptFilter = null;
+    this._send = e, this._pending = /* @__PURE__ */ new Map(), this.cookieJar = new ms(), this._intercepted = !1, this._origFetch = null, this._origXhrOpen = null, this._origXhrSend = null, this._interceptTarget = null, this._interceptFilter = null;
   }
   intercept(e = globalThis, t = null) {
-    this._intercepted && this.release(), this._interceptTarget = e, this._interceptFilter = t, this._intercepted = !0, e.__qdp_proxy_fetch = (i, r) => this.fetch(i, r), this._messageHandler = (i) => {
-      if (!i.data || i.data.type !== "qdp-fetch" || !i.source) return;
+    this._intercepted && this.release(), this._interceptTarget = e, this._interceptFilter = t, this._intercepted = !0, e.__uqdp_proxy_fetch = (i, r) => this.fetch(i, r), this._messageHandler = (i) => {
+      if (!i.data || i.data.type !== "uqdp-fetch" || !i.source) return;
       const { id: r, url: o, method: a, headers: h, body: l } = i.data;
       this.fetch(o, { method: a, headers: h, body: l }).then(async (d) => {
         const f = await d.arrayBuffer(), u = {};
         d.headers.forEach((_, p) => {
           u[p] = _;
         }), i.source.postMessage({
-          type: "qdp-fetch-res",
+          type: "uqdp-fetch-res",
           id: r,
           status: d.status,
           statusText: d.statusText,
@@ -2936,7 +2969,7 @@ class ms {
       }).catch((d) => {
         try {
           i.source.postMessage({
-            type: "qdp-fetch-res",
+            type: "uqdp-fetch-res",
             id: r,
             error: d.message || "Fetch failed"
           }, "*");
@@ -2974,25 +3007,25 @@ class ms {
       this._origXhrOpen = n.prototype.open, this._origXhrSend = n.prototype.send;
       const i = this._origXhrOpen, r = this._origXhrSend;
       n.prototype.open = function(a, h, ...l) {
-        return this._qdpMethod = a, this._qdpUrl = String(h), this._qdpHeaders = {}, this._qdpAsync = l[0] !== !1, i.call(this, a, h, ...l);
+        return this._uqdpMethod = a, this._uqdpUrl = String(h), this._uqdpHeaders = {}, this._uqdpAsync = l[0] !== !1, i.call(this, a, h, ...l);
       };
       const o = n.prototype.setRequestHeader;
       this._origXhrSetHeader = o, n.prototype.setRequestHeader = function(a, h) {
-        return this._qdpHeaders && (this._qdpHeaders[a] = h), o.call(this, a, h);
+        return this._uqdpHeaders && (this._uqdpHeaders[a] = h), o.call(this, a, h);
       }, n.prototype.send = function(a) {
-        const h = this._qdpUrl;
+        const h = this._uqdpUrl;
         if (h && s._shouldIntercept(h)) {
           const l = this, d = {
-            method: this._qdpMethod || "GET",
-            headers: this._qdpHeaders || {}
+            method: this._uqdpMethod || "GET",
+            headers: this._uqdpHeaders || {}
           };
           a != null && (d.body = a), s.fetch(h, d).then(async (f) => {
             Object.defineProperty(l, "status", { value: f.status, writable: !1, configurable: !0 }), Object.defineProperty(l, "statusText", { value: f.statusText, writable: !1, configurable: !0 });
             const u = await f.text();
             Object.defineProperty(l, "responseText", { value: u, writable: !1, configurable: !0 }), Object.defineProperty(l, "response", { value: u, writable: !1, configurable: !0 }), Object.defineProperty(l, "readyState", { value: 4, writable: !1, configurable: !0 });
             const _ = [];
-            f.headers.forEach((p, b) => _.push(`${b}: ${p}`)), Object.defineProperty(l, "_qdpRespHeaders", { value: _.join(`\r
-`), configurable: !0 }), l.getAllResponseHeaders = () => l._qdpRespHeaders, l.getResponseHeader = (p) => f.headers.get(p), l.onreadystatechange && l.onreadystatechange(new Event("readystatechange")), l.onload && l.onload(new Event("load")), l.dispatchEvent(new Event("readystatechange")), l.dispatchEvent(new Event("load")), l.dispatchEvent(new Event("loadend"));
+            f.headers.forEach((p, b) => _.push(`${b}: ${p}`)), Object.defineProperty(l, "_uqdpRespHeaders", { value: _.join(`\r
+`), configurable: !0 }), l.getAllResponseHeaders = () => l._uqdpRespHeaders, l.getResponseHeader = (p) => f.headers.get(p), l.onreadystatechange && l.onreadystatechange(new Event("readystatechange")), l.onload && l.onload(new Event("load")), l.dispatchEvent(new Event("readystatechange")), l.dispatchEvent(new Event("load")), l.dispatchEvent(new Event("loadend"));
           }).catch((f) => {
             Object.defineProperty(l, "readyState", { value: 4, writable: !1, configurable: !0 }), Object.defineProperty(l, "status", { value: 0, writable: !1, configurable: !0 }), l.onerror && l.onerror(new Event("error")), l.dispatchEvent(new Event("error")), l.dispatchEvent(new Event("loadend"));
           });
@@ -3006,7 +3039,7 @@ class ms {
     if (!this._intercepted) return;
     const e = this._interceptTarget;
     try {
-      delete e.__qdp_proxy_fetch;
+      delete e.__uqdp_proxy_fetch;
     } catch {
     }
     this._messageHandler && (e.removeEventListener("message", this._messageHandler), this._messageHandler = null), this._origFetch && (e.fetch = this._origFetch);
@@ -3033,10 +3066,10 @@ class ms {
     }
   }
   createInterceptScript() {
-    return "<script>(function(){var _of=window.fetch;window.fetch=function(i,o){try{var u=new URL(typeof i==='string'?i:i.url,location.href);if(u.origin!==location.origin){return window.parent.__qdp_proxy_fetch(u.href,o||{});}}catch(e){}return _of.call(window,i,o);};})()<\/script>";
+    return "<script>(function(){var _of=window.fetch;window.fetch=function(i,o){try{var u=new URL(typeof i==='string'?i:i.url,location.href);if(u.origin!==location.origin){return window.parent.__uqdp_proxy_fetch(u.href,o||{});}}catch(e){}return _of.call(window,i,o);};})()<\/script>";
   }
   async fetch(e, t = {}) {
-    const s = _s++, n = (t.method || "GET").toUpperCase(), i = Object.assign({}, t.headers || {});
+    const s = ps++, n = (t.method || "GET").toUpperCase(), i = Object.assign({}, t.headers || {});
     let r = null;
     if (t.body) {
       if (typeof t.body == "string")
@@ -3073,7 +3106,7 @@ class ms {
       l && !i.cookie && (i.cookie = l);
     } catch {
     }
-    const o = t.timeout || 3e4, a = fs(s, n, e, i, r);
+    const o = t.timeout || 3e4, a = us(s, n, e, i, r);
     return new Promise((h, l) => {
       const d = t.signal;
       let f = !1;
@@ -3101,6 +3134,7 @@ class ms {
         status: 0,
         headers: {},
         bodyChunks: [],
+        receivedSeqs: /* @__PURE__ */ new Set(),
         totalBodySize: 0,
         seqCount: -1,
         endReceived: !1
@@ -3115,7 +3149,7 @@ class ms {
           s.status = t.status, s.headers = t.headers;
           break;
         case S.BODY:
-          s.bodyChunks.push({ seqNum: t.seqNum, data: new Uint8Array(t.data) }), s.totalBodySize += t.data.byteLength, s.endReceived && s.bodyChunks.length >= s.seqCount && this._resolveRequest(t.requestId, s);
+          s.receivedSeqs.has(t.seqNum) || (s.receivedSeqs.add(t.seqNum), s.bodyChunks.push({ seqNum: t.seqNum, data: new Uint8Array(t.data) }), s.totalBodySize += t.data.byteLength), s.endReceived && s.bodyChunks.length >= s.seqCount && this._resolveRequest(t.requestId, s);
           break;
         case S.END:
           s.seqCount = t.seqCount, s.endReceived = !0, s.bodyChunks.length >= t.seqCount && this._resolveRequest(t.requestId, s);
@@ -3126,25 +3160,25 @@ class ms {
       }
   }
   _resolveRequest(e, t) {
-    clearTimeout(t.timeout), this._pending.delete(e), t.bodyChunks.sort((a, h) => a.seqNum - h.seqNum);
-    const s = new Uint8Array(t.totalBodySize);
-    let n = 0;
-    for (const a of t.bodyChunks)
-      s.set(a.data, n), n += a.data.length;
-    const i = new us(t.headers), r = i.get("x-qdp-compressed") === "gzip", o = i.get("x-qdp-set-cookie");
-    if (o)
+    clearTimeout(t.timeout), this._pending.delete(e), t.bodyChunks.sort((h, l) => h.seqNum - l.seqNum);
+    const s = t.seqCount > 0 && t.bodyChunks.length < t.seqCount, n = new Uint8Array(t.totalBodySize);
+    let i = 0;
+    for (const h of t.bodyChunks)
+      n.set(h.data, i), i += h.data.length;
+    const r = new _s(t.headers), o = !s && r.get("x-uqdp-compressed") === "gzip", a = r.get("x-uqdp-set-cookie");
+    if (a)
       try {
-        const a = JSON.parse(o);
-        i._map["set-cookie"] = a.join(`
+        const h = JSON.parse(a);
+        r._map["set-cookie"] = h.join(`
 `);
         try {
-          const h = new URL(t.url).origin;
-          this.cookieJar.store(h, a);
+          const l = new URL(t.url).origin;
+          this.cookieJar.store(l, h);
         } catch {
         }
       } catch {
       }
-    r ? this._decompressAndResolve(s.buffer, t, i) : t.resolve(new J(t.status, i, s.buffer));
+    o ? this._decompressAndResolve(n.buffer, t, r) : t.resolve(new J(t.status, r, n.buffer));
   }
   async _decompressAndResolve(e, t, s) {
     if (typeof DecompressionStream > "u") {
@@ -3173,7 +3207,7 @@ class ms {
 }
 class J {
   constructor(e, t, s) {
-    this.status = e, this.statusText = t.get("x-qdp-status-text") || "", this.url = t.get("x-qdp-url") || "", this.redirected = t.get("x-qdp-redirected") === "1", this.ok = e >= 200 && e < 300, this.type = "basic", this.headers = t, this._body = s, this.bodyUsed = !1, this.body = typeof ReadableStream < "u" ? new ReadableStream({
+    this.status = e, this.statusText = t.get("x-uqdp-status-text") || "", this.url = t.get("x-uqdp-url") || "", this.redirected = t.get("x-uqdp-redirected") === "1", this.ok = e >= 200 && e < 300, this.type = "basic", this.headers = t, this._body = s, this.bodyUsed = !1, this.body = typeof ReadableStream < "u" ? new ReadableStream({
       start(n) {
         n.enqueue(new Uint8Array(s)), n.close();
       }
@@ -3205,7 +3239,7 @@ class J {
     return new J(this.status, this.headers, this._body.slice(0));
   }
 }
-const gs = 16 * 1024, se = /* @__PURE__ */ new Map(), ys = 200, ws = /* @__PURE__ */ new Set([200, 203, 204, 206, 300, 301, 404, 405, 410, 414, 501]), bs = /* @__PURE__ */ new Set([
+const ys = 16 * 1024, se = /* @__PURE__ */ new Map(), ws = 200, bs = /* @__PURE__ */ new Set([200, 203, 204, 206, 300, 301, 404, 405, 410, 414, 501]), Cs = /* @__PURE__ */ new Set([
   "content-encoding",
   "transfer-encoding",
   "content-length",
@@ -3216,11 +3250,11 @@ const gs = 16 * 1024, se = /* @__PURE__ */ new Map(), ys = 200, ws = /* @__PURE_
   "proxy-authorization",
   "te",
   "trailer"
-]), Cs = /* @__PURE__ */ new Set([
+]), Ss = /* @__PURE__ */ new Set([
   "host",
   "origin",
   "referer"
-]), Ss = /* @__PURE__ */ new Set([
+]), Is = /* @__PURE__ */ new Set([
   "content-security-policy",
   "content-security-policy-report-only",
   "x-frame-options",
@@ -3235,10 +3269,10 @@ const gs = 16 * 1024, se = /* @__PURE__ */ new Map(), ys = 200, ws = /* @__PURE_
   "access-control-expose-headers",
   "access-control-max-age",
   "strict-transport-security"
-]), Se = "<script data-qdp>!function(){var _i=0,_c={},_p,h=/^https?:\\/\\//,D=Object.defineProperty;function g(){if(_p)return _p;try{if(_p=window.__qdp_proxy_fetch)return _p}catch(e){}try{if(_p=window.parent.__qdp_proxy_fetch)return _p}catch(e){}try{if(_p=window.top.__qdp_proxy_fetch)return _p}catch(e){}}window.addEventListener('message',function(e){var m=e.data;if(!m||m.type!=='qdp-fetch-res')return;var c=_c[m.id];if(!c)return;delete _c[m.id];if(m.error)return c[1](new Error(m.error));c[0](new Response(m.body,{status:m.status,statusText:m.statusText||'',headers:m.headers||{}}))});function P(u,o){var fn=g();if(fn)return fn(u,o||{});var id=++_i;return new Promise(function(ok,no){_c[id]=[ok,no];try{var t=window.parent!==window?window.parent:window.top;t.postMessage({type:'qdp-fetch',id:id,url:u,method:(o&&o.method)||'GET',headers:(o&&o.headers)||{},body:(o&&o.body)||null},'*')}catch(e){delete _c[id];no(e)}})}var f=fetch;fetch=function(i,o){var u=i&&i.url||''+i;return h.test(u)?P(u,o||{}):f.apply(this,arguments)};var X=XMLHttpRequest.prototype,O=X.open,S=X.send,H=X.setRequestHeader;X.open=function(m,u){this._m=m;this._u=''+u;this._h={};return O.apply(this,arguments)};X.setRequestHeader=function(n,v){this._h&&(this._h[n]=v);return H.apply(this,arguments)};X.send=function(b){var x=this,u=x._u;if(h.test(u)){var o={method:x._m||'GET',headers:x._h||{}};b!=null&&(o.body=b);P(u,o).then(function(r){D(x,'status',{value:r.status,configurable:1});D(x,'statusText',{value:r.statusText||'',configurable:1});return r.text().then(function(t){D(x,'responseText',{value:t,configurable:1});D(x,'response',{value:t,configurable:1});D(x,'readyState',{value:4,configurable:1});try{x.dispatchEvent(new Event('readystatechange'))}catch(e){}try{x.onreadystatechange&&x.onreadystatechange()}catch(e){}try{x.dispatchEvent(new Event('load'))}catch(e){}try{x.onload&&x.onload()}catch(e){}try{x.dispatchEvent(new Event('loadend'))}catch(e){}})}).catch(function(){D(x,'readyState',{value:4,configurable:1});D(x,'status',{value:0,configurable:1});try{x.dispatchEvent(new Event('error'))}catch(e){}try{x.onerror&&x.onerror()}catch(e){}try{x.dispatchEvent(new Event('loadend'))}catch(e){}});return}return S.apply(this,arguments)};try{var hp=history.pushState,hr=history.replaceState;history.pushState=function(s,t,u){try{return hp.call(this,s,t,u)}catch(e){return hp.call(this,s,t)}};history.replaceState=function(s,t,u){try{return hr.call(this,s,t,u)}catch(e){return hr.call(this,s,t)}}}catch(e){}try{if(navigator.serviceWorker)navigator.serviceWorker.register=function(){return Promise.reject(new Error('blocked'))}}catch(e){}try{var sb=navigator.sendBeacon;if(sb)navigator.sendBeacon=function(u,b){if(h.test(u)){P(u,{method:'POST',body:b});return true}return sb.apply(navigator,arguments)}}catch(e){}try{var wo=window.open;window.open=function(u){if(u&&h.test(u)){try{window.parent.postMessage({type:'qdp-nav',url:u},'*')}catch(e){}return null}return wo.apply(this,arguments)}}catch(e){}document.addEventListener('error',function(e){var el=e.target,t,s;if(!el||!el.tagName||el._s)return;t=el.tagName;s=t==='LINK'?el.href||'':el.src||el.currentSrc||el.data||'';if(!h.test(s))return;el._s=1;t==='LINK'&&(el.rel||'').includes('stylesheet')?P(s,{}).then(function(r){return r.text()}).then(function(t){var n=document.createElement('style');n.textContent=t;el.parentNode&&el.parentNode.insertBefore(n,el);el.disabled=1}).catch(function(){}):t==='SCRIPT'?P(s,{}).then(function(r){return r.text()}).then(function(t){var n=document.createElement('script');n.textContent=t;document.head.appendChild(n)}).catch(function(){}):P(s,{}).then(function(r){return r.blob()}).then(function(b){var u=URL.createObjectURL(b);el.src!==void 0?el.src=u:el.data!==void 0&&(el.data=u)}).catch(function(){})},1);document.addEventListener('click',function(e){for(var n=e.target;n;n=n.parentElement)if(n.tagName==='A'&&h.test(n.href||'')){e.preventDefault();e.stopPropagation();try{window.parent.postMessage({type:'qdp-nav',url:n.href},'*')}catch(x){}break}},1);document.addEventListener('submit',function(e){var f=e.target,u=f.action||'';if(!h.test(u))return;e.preventDefault();(f.method||'get').toUpperCase()==='GET'&&(u+=(~u.indexOf('?')?'&':'?')+new URLSearchParams(new FormData(f)));try{window.parent.postMessage({type:'qdp-nav',url:u},'*')}catch(x){}},1)}()<\/script>";
-class Is {
+]), Se = "<script data-uqdp>!function(){var _i=0,_c={},_p,h=/^https?:\\/\\//,D=Object.defineProperty;function g(){if(_p)return _p;try{if(_p=window.__uqdp_proxy_fetch)return _p}catch(e){}try{if(_p=window.parent.__uqdp_proxy_fetch)return _p}catch(e){}try{if(_p=window.top.__uqdp_proxy_fetch)return _p}catch(e){}}window.addEventListener('message',function(e){var m=e.data;if(!m||m.type!=='uqdp-fetch-res')return;var c=_c[m.id];if(!c)return;delete _c[m.id];if(m.error)return c[1](new Error(m.error));c[0](new Response(m.body,{status:m.status,statusText:m.statusText||'',headers:m.headers||{}}))});function P(u,o){var fn=g();if(fn)return fn(u,o||{});var id=++_i;return new Promise(function(ok,no){_c[id]=[ok,no];try{var t=window.parent!==window?window.parent:window.top;t.postMessage({type:'uqdp-fetch',id:id,url:u,method:(o&&o.method)||'GET',headers:(o&&o.headers)||{},body:(o&&o.body)||null},'*')}catch(e){delete _c[id];no(e)}})}var f=fetch;fetch=function(i,o){var u=i&&i.url||''+i;return h.test(u)?P(u,o||{}):f.apply(this,arguments)};var X=XMLHttpRequest.prototype,O=X.open,S=X.send,H=X.setRequestHeader;X.open=function(m,u){this._m=m;this._u=''+u;this._h={};return O.apply(this,arguments)};X.setRequestHeader=function(n,v){this._h&&(this._h[n]=v);return H.apply(this,arguments)};X.send=function(b){var x=this,u=x._u;if(h.test(u)){var o={method:x._m||'GET',headers:x._h||{}};b!=null&&(o.body=b);P(u,o).then(function(r){D(x,'status',{value:r.status,configurable:1});D(x,'statusText',{value:r.statusText||'',configurable:1});return r.text().then(function(t){D(x,'responseText',{value:t,configurable:1});D(x,'response',{value:t,configurable:1});D(x,'readyState',{value:4,configurable:1});try{x.dispatchEvent(new Event('readystatechange'))}catch(e){}try{x.onreadystatechange&&x.onreadystatechange()}catch(e){}try{x.dispatchEvent(new Event('load'))}catch(e){}try{x.onload&&x.onload()}catch(e){}try{x.dispatchEvent(new Event('loadend'))}catch(e){}})}).catch(function(){D(x,'readyState',{value:4,configurable:1});D(x,'status',{value:0,configurable:1});try{x.dispatchEvent(new Event('error'))}catch(e){}try{x.onerror&&x.onerror()}catch(e){}try{x.dispatchEvent(new Event('loadend'))}catch(e){}});return}return S.apply(this,arguments)};try{var hp=history.pushState,hr=history.replaceState;history.pushState=function(s,t,u){try{return hp.call(this,s,t,u)}catch(e){return hp.call(this,s,t)}};history.replaceState=function(s,t,u){try{return hr.call(this,s,t,u)}catch(e){return hr.call(this,s,t)}}}catch(e){}try{if(navigator.serviceWorker)navigator.serviceWorker.register=function(){return Promise.reject(new Error('blocked'))}}catch(e){}try{var sb=navigator.sendBeacon;if(sb)navigator.sendBeacon=function(u,b){if(h.test(u)){P(u,{method:'POST',body:b});return true}return sb.apply(navigator,arguments)}}catch(e){}try{var wo=window.open;window.open=function(u){if(u&&h.test(u)){try{window.parent.postMessage({type:'uqdp-nav',url:u},'*')}catch(e){}return null}return wo.apply(this,arguments)}}catch(e){}document.addEventListener('error',function(e){var el=e.target,t,s;if(!el||!el.tagName||el._s)return;t=el.tagName;s=t==='LINK'?el.href||'':el.src||el.currentSrc||el.data||'';if(!h.test(s))return;el._s=1;t==='LINK'&&(el.rel||'').includes('stylesheet')?P(s,{}).then(function(r){return r.text()}).then(function(t){var n=document.createElement('style');n.textContent=t;el.parentNode&&el.parentNode.insertBefore(n,el);el.disabled=1}).catch(function(){}):t==='SCRIPT'?P(s,{}).then(function(r){return r.text()}).then(function(t){var n=document.createElement('script');n.textContent=t;document.head.appendChild(n)}).catch(function(){}):P(s,{}).then(function(r){return r.blob()}).then(function(b){var u=URL.createObjectURL(b);el.src!==void 0?el.src=u:el.data!==void 0&&(el.data=u)}).catch(function(){})},1);document.addEventListener('click',function(e){for(var n=e.target;n;n=n.parentElement)if(n.tagName==='A'&&h.test(n.href||'')){e.preventDefault();e.stopPropagation();try{window.parent.postMessage({type:'uqdp-nav',url:n.href},'*')}catch(x){}break}},1);document.addEventListener('submit',function(e){var f=e.target,u=f.action||'';if(!h.test(u))return;e.preventDefault();(f.method||'get').toUpperCase()==='GET'&&(u+=(~u.indexOf('?')?'&':'?')+new URLSearchParams(new FormData(f)));try{window.parent.postMessage({type:'uqdp-nav',url:u},'*')}catch(x){}},1)}()<\/script>";
+class Ps {
   constructor(e, t = {}) {
-    this._send = e, this._allowList = t.allowList || [], this._blockList = t.blockList || [], this._chunkSize = t.chunkSize || gs, this._compress = t.compress || !1, this._active = !1;
+    this._send = e, this._allowList = t.allowList || [], this._blockList = t.blockList || [], this._chunkSize = t.chunkSize || ys, this._compress = t.compress || !1, this._active = !1;
   }
   serve(e) {
     e && (e.chunkSize != null && (this._chunkSize = e.chunkSize), e.compress != null && (this._compress = e.compress), e.allowList != null && (this._allowList = e.allowList), e.blockList != null && (this._blockList = e.blockList)), this._active = !0;
@@ -3276,38 +3310,38 @@ class Is {
       const y = (h.accept || "").toLowerCase();
       let x, m;
       y.includes("text/html") ? (x = "document", m = "navigate") : y.includes("application/json") || y.startsWith("*/*") ? (x = "empty", m = "cors") : y.includes("image/") ? (x = "image", m = "no-cors") : y.includes("text/css") ? (x = "style", m = "cors") : y.includes("application/javascript") || y.includes("text/javascript") ? (x = "script", m = "no-cors") : y.includes("font/") ? (x = "font", m = "cors") : (x = "empty", m = "cors");
-      for (const I of Cs) delete h[I];
+      for (const I of Ss) delete h[I];
       h.host = _, h.origin || (h.origin = u), h.referer || (h.referer = f.href), h["user-agent"] || (h["user-agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"), h.accept || (h.accept = "*/*"), h["accept-language"] || (h["accept-language"] = "en-US,en;q=0.9"), h["accept-encoding"] = "identity", h["sec-fetch-site"] = b, h["sec-fetch-mode"] = m, h["sec-fetch-dest"] = x, h["sec-ch-ua"] = '"Google Chrome";v="124", "Chromium";v="124", "Not-A.Brand";v="99"', h["sec-ch-ua-mobile"] = "?0", h["sec-ch-ua-platform"] = '"Windows"', o && (h["content-length"] = String(o.byteLength || 0));
-      const W = n === "GET" || n === "HEAD" ? `${n}:${i}` : null, v = W ? se.get(W) : null;
-      if (v) {
+      const W = n === "GET" || n === "HEAD" ? `${n}:${i}` : null, P = W ? se.get(W) : null;
+      if (P) {
         const I = h["if-none-match"], O = h["if-modified-since"];
-        if (I && I === v.etag || O && v.lastModified && new Date(O) >= new Date(v.lastModified)) {
-          await this._send(lt(s, 304, { etag: v.etag || "", "last-modified": v.lastModified || "" })), await this._send(dt(s));
+        if (I && I === P.etag || O && P.lastModified && new Date(O) >= new Date(P.lastModified)) {
+          await this._send(lt(s, 304, { etag: P.etag || "", "last-modified": P.lastModified || "" })), await this._send(dt(s));
           return;
         }
-        v.etag && (h["if-none-match"] = v.etag), v.lastModified && (h["if-modified-since"] = v.lastModified);
+        P.etag && (h["if-none-match"] = P.etag), P.lastModified && (h["if-modified-since"] = P.lastModified);
       }
       const g = await fetch(i, d), R = {}, me = [];
       g.headers.forEach((I, O) => {
         const Q = O.toLowerCase();
-        if (!bs.has(Q) && !Ss.has(Q)) {
+        if (!Cs.has(Q) && !Is.has(Q)) {
           if (Q === "set-cookie") {
             me.push(I);
             return;
           }
           R[O] = I;
         }
-      }), me.length > 0 && (R["x-qdp-set-cookie"] = JSON.stringify(me));
-      const Ve = g.headers.get("etag"), Ge = g.headers.get("last-modified"), Je = g.headers.get("cache-control") || "", qt = Je.includes("no-store") || Je.includes("no-cache");
-      if (W && !qt && ws.has(g.status) && (Ve || Ge) && (se.size >= ys && se.delete(se.keys().next().value), se.set(W, { etag: Ve, lastModified: Ge })), R["x-qdp-status-text"] = g.statusText, R["x-qdp-url"] = g.url, g.redirected && (R["x-qdp-redirected"] = "1"), this._compress && (R["x-qdp-compressed"] = "gzip"), await this._send(lt(s, g.status, R)), g.body) {
+      }), me.length > 0 && (R["x-uqdp-set-cookie"] = JSON.stringify(me));
+      const Ve = g.headers.get("etag"), Ge = g.headers.get("last-modified"), Je = g.headers.get("cache-control") || "", Dt = Je.includes("no-store") || Je.includes("no-cache");
+      if (W && !Dt && bs.has(g.status) && (Ve || Ge) && (se.size >= ws && se.delete(se.keys().next().value), se.set(W, { etag: Ve, lastModified: Ge })), R["x-uqdp-status-text"] = g.statusText, R["x-uqdp-url"] = g.url, g.redirected && (R["x-uqdp-redirected"] = "1"), this._compress && (R["x-uqdp-compressed"] = "gzip"), await this._send(lt(s, g.status, R)), g.body) {
         const I = (g.headers.get("content-type") || "").toLowerCase(), O = I.includes("text/css"), Q = I.includes("text/html"), ze = g.url || i;
         let Y = g.body;
         if (O) {
-          const K = await new Response(Y).arrayBuffer(), H = this._rewriteCssUrls(new TextDecoder().decode(K), ze), D = new TextEncoder().encode(H), E = this._chunkSize;
+          const K = await new Response(Y).arrayBuffer(), H = this._rewriteCssUrls(new TextDecoder().decode(K), ze), M = new TextEncoder().encode(H), E = this._chunkSize;
           let A = 0;
           if (this._compress && typeof CompressionStream < "u") {
             const C = new CompressionStream("gzip"), $ = C.writable.getWriter();
-            $.write(D), $.close();
+            $.write(M), $.close();
             const Z = C.readable.getReader();
             try {
               for (; ; ) {
@@ -3322,18 +3356,18 @@ class Is {
               });
             }
           } else
-            for (let C = 0; C < D.length; C += E)
-              await this._send(te(s, A++, D.subarray(C, C + E)));
+            for (let C = 0; C < M.length; C += E)
+              await this._send(te(s, A++, M.subarray(C, C + E)));
           a = A;
         } else if (Q) {
           const K = await new Response(Y).arrayBuffer();
           let H = new TextDecoder().decode(K);
           H = this._rewriteHtml(H, ze);
-          const D = new TextEncoder().encode(H), E = this._chunkSize;
+          const M = new TextEncoder().encode(H), E = this._chunkSize;
           let A = 0;
           if (this._compress && typeof CompressionStream < "u") {
             const C = new CompressionStream("gzip"), $ = C.writable.getWriter();
-            $.write(D), $.close();
+            $.write(M), $.close();
             const Z = C.readable.getReader();
             try {
               for (; ; ) {
@@ -3348,21 +3382,21 @@ class Is {
               });
             }
           } else
-            for (let C = 0; C < D.length; C += E)
-              await this._send(te(s, A++, D.subarray(C, C + E)));
+            for (let C = 0; C < M.length; C += E)
+              await this._send(te(s, A++, M.subarray(C, C + E)));
           a = A;
         } else {
           this._compress && typeof CompressionStream < "u" && (Y = Y.pipeThrough(new CompressionStream("gzip")));
           const K = Y.getReader();
           let H = 0;
-          const D = this._chunkSize;
+          const M = this._chunkSize;
           try {
             for (; ; ) {
               const { done: E, value: A } = await K.read();
               if (E) break;
               if (A != null && A.length)
-                for (let C = 0; C < A.length; C += D) {
-                  const $ = A.subarray(C, C + D);
+                for (let C = 0; C < A.length; C += M) {
+                  const $ = A.subarray(C, C + M);
                   await this._send(te(s, H++, $));
                 }
             }
@@ -3685,8 +3719,8 @@ class vs {
     this._renegotiate();
   }
 }
-const ft = 1, At = 2, Rt = 3, De = new TextEncoder(), Ie = new TextDecoder();
-class Ps {
+const ft = 1, At = 2, Rt = 3, Me = new TextEncoder(), Ie = new TextDecoder();
+class Ts {
   constructor(e) {
     this._send = e, this._streams = /* @__PURE__ */ new Map(), this._listeners = {};
   }
@@ -3708,7 +3742,7 @@ class Ps {
   create(e) {
     const t = new ut(e, this._send);
     this._streams.set(e, t);
-    const s = De.encode(e), n = new ArrayBuffer(2 + s.length), i = new Uint8Array(n);
+    const s = Me.encode(e), n = new ArrayBuffer(2 + s.length), i = new Uint8Array(n);
     return i[0] = ft, i[1] = s.length, i.set(s, 2), this._send(n), t;
   }
   get(e) {
@@ -3752,13 +3786,13 @@ class ut {
   }
   async write(e) {
     if (this._closed) throw new Error("Stream closed");
-    const t = new Uint8Array(e), s = De.encode(this.name), n = new ArrayBuffer(2 + s.length + t.length), i = new Uint8Array(n);
+    const t = new Uint8Array(e), s = Me.encode(this.name), n = new ArrayBuffer(2 + s.length + t.length), i = new Uint8Array(n);
     i[0] = At, i[1] = s.length, i.set(s, 2), i.set(t, 2 + s.length), await this._send(n);
   }
   async close() {
     if (this._closed) return;
     this._closed = !0;
-    const e = De.encode(this.name), t = new ArrayBuffer(2 + e.length), s = new Uint8Array(t);
+    const e = Me.encode(this.name), t = new ArrayBuffer(2 + e.length), s = new Uint8Array(t);
     s[0] = Rt, s[1] = e.length, s.set(e, 2), await this._send(t), this._emit("close");
   }
   _handleData(e) {
@@ -3773,7 +3807,7 @@ const k = {
   MESSAGE: 241,
   PROXY: 242,
   STREAM: 243
-}, Ts = [
+}, ks = [
   { urls: [
     "stun:stun.l.google.com:19302",
     "stun:stun1.l.google.com:19302",
@@ -3795,18 +3829,23 @@ const k = {
     credential: "openrelayproject"
   }
 ];
-let _t = 1, ie = null, ve = null;
+let _t = 1, ie = null, Pe = null;
 function Et() {
-  return ie ? Promise.resolve(ie) : (ve || (ve = RTCPeerConnection.generateCertificate({ name: "ECDSA", namedCurve: "P-256" }).then((c) => (ie = c, c)).catch(() => null)), ve);
+  if (ie) return Promise.resolve(ie);
+  if (!Pe) {
+    if (typeof RTCPeerConnection > "u") return Promise.resolve(null);
+    Pe = RTCPeerConnection.generateCertificate({ name: "ECDSA", namedCurve: "P-256" }).then((c) => (ie = c, c)).catch(() => null);
+  }
+  return Pe;
 }
-Et();
-function M(c, e) {
+typeof RTCPeerConnection < "u" && Et();
+function D(c, e) {
   const t = new Uint8Array(e), s = new ArrayBuffer(1 + t.length), n = new Uint8Array(s);
   return n[0] = c, n.set(t, 1), s;
 }
-class ks {
+class Ut {
   constructor({
-    iceServers: e = Ts,
+    iceServers: e = ks,
     dataChannels: t = 32,
     chunkSize: s = kt,
     proxy: n = {},
@@ -3826,10 +3865,10 @@ class ks {
     srtp: x = null,
     relay: m = null,
     iceRacing: W = !1,
-    iceRacingTimeout: v = 1500,
+    iceRacingTimeout: P = 1500,
     iceRacingTopN: g = 0
   } = {}) {
-    this.iceServers = e, this.iceTransportPolicy = f, this.iceCandidatePoolSize = u, this.dataChannelCount = t, this.chunkSize = s, this.isHost = i, this.requireRoomCode = r, this.trackerUrls = o, this.driveSignalConfig = a, this.mqttConfig = h, this.bondTransports = l, this._bondSet = Array.isArray(l) ? new Set(l.map((R) => R.toLowerCase())) : null, this.signalServerUrl = _, this.serverMode = d, this.remoteIsHost = !1, this.webTransportConfig = p, this.dhtNodes = b, this.icmpConfig = y, this.srtpConfig = x, this.relayConfig = m, this.pc = null, this.signaling = null, this.pool = null, this.bonding = null, this.monitor = new Tt(), this.roomCode = null, this.isOfferer = !1, this._listeners = {}, this._pendingMeta = /* @__PURE__ */ new Map(), this._probeTimers = /* @__PURE__ */ new Map(), this._negotiationState = "idle", this._pcCreated = !1, this._iceRestartPending = !1, this._pendingIceCandidates = [], this._pendingRemoteCandidates = [], this._preConnectedWs = null, this._preWarmedManager = null, this._proxyOpts = n, this.message = null, this._proxyClient = null, this._proxyServer = null, this.proxy = null, this.media = null, this.stream = null, this._mqttTransport = null, this._mqttReconnectTimer = null, this._mqttReconnectAttempt = 0, this._allDcDead = !1, this._webTransport = null, this._e2e = null, this._e2ePublicKeyB64 = null, this._icmpTransport = null, this._srtpTransport = null, this._proxyRelay = null, this._iceRacing = W, this._iceRacingTimeout = v, this._iceRacingTopN = g, this._iceProbePromise = null;
+    this.iceServers = e, this.iceTransportPolicy = f, this.iceCandidatePoolSize = u, this.dataChannelCount = t, this.chunkSize = s, this.isHost = i, this.requireRoomCode = r, this.trackerUrls = o, this.driveSignalConfig = a, this.mqttConfig = h, this.bondTransports = l, this._bondSet = Array.isArray(l) ? new Set(l.map((R) => R.toLowerCase())) : null, this.signalServerUrl = _, this.serverMode = d, this.remoteIsHost = !1, this.webTransportConfig = p, this.dhtNodes = b, this.icmpConfig = y, this.srtpConfig = x, this.relayConfig = m, this.pc = null, this.signaling = null, this.pool = null, this.bonding = null, this.monitor = new Tt(), this.roomCode = null, this.isOfferer = !1, this._listeners = {}, this._pendingMeta = /* @__PURE__ */ new Map(), this._probeTimers = /* @__PURE__ */ new Map(), this._negotiationState = "idle", this._pcCreated = !1, this._iceRestartPending = !1, this._pendingIceCandidates = [], this._pendingRemoteCandidates = [], this._preConnectedWs = null, this._preWarmedManager = null, this._proxyOpts = n, this.message = null, this._proxyClient = null, this._proxyServer = null, this.proxy = null, this.media = null, this.stream = null, this._mqttTransport = null, this._mqttReconnectTimer = null, this._mqttReconnectAttempt = 0, this._allDcDead = !1, this._webTransport = null, this._e2e = null, this._e2ePublicKeyB64 = null, this._icmpTransport = null, this._srtpTransport = null, this._proxyRelay = null, this._iceRacing = W, this._iceRacingTimeout = P, this._iceRacingTopN = g, this._iceProbePromise = null;
   }
   warmup() {
     var e;
@@ -3844,7 +3883,7 @@ class ks {
     }
   }
   _probeIceServers() {
-    return this._iceRacing ? (this._iceProbePromise || (this._iceProbePromise = Bt.probe(this.iceServers, {
+    return this._iceRacing ? (this._iceProbePromise || (this._iceProbePromise = Nt.probe(this.iceServers, {
       timeout: this._iceRacingTimeout,
       topN: this._iceRacingTopN
     }).then((e) => {
@@ -3867,12 +3906,12 @@ class ks {
         try {
           s(...t);
         } catch (n) {
-          console.error("QDP event error:", n);
+          console.error("UQDP event error:", n);
         }
   }
   async createRoom(e = null) {
     var t;
-    if (this.isOfferer = !0, e ? this.roomCode = e : this.requireRoomCode ? this.roomCode = Math.random().toString(36).substring(2, 8).toUpperCase() : this.roomCode = "QDP-PUBLIC-SWARM", (t = this.mqttConfig) != null && t.e2e && (this._e2e = new st(), await this._e2e.init(), this._e2ePublicKeyB64 = btoa(String.fromCharCode(...await this._e2e.getPublicKey()))), this._iceRacing && await this._probeIceServers(), this._pcCreated || this._createPeerConnection(), !this.driveSignalConfig) {
+    if (this.isOfferer = !0, e ? this.roomCode = e : this.requireRoomCode ? this.roomCode = Math.random().toString(36).substring(2, 8).toUpperCase() : this.roomCode = "UQDP-PUBLIC-SWARM", (t = this.mqttConfig) != null && t.e2e && (this._e2e = new st(), await this._e2e.init(), this._e2ePublicKeyB64 = btoa(String.fromCharCode(...await this._e2e.getPublicKey()))), this._iceRacing && await this._probeIceServers(), this._pcCreated || this._createPeerConnection(), !this.driveSignalConfig) {
       this._negotiationState = "offering";
       const s = await this.pc.createOffer();
       await this.pc.setLocalDescription(s);
@@ -3898,8 +3937,8 @@ class ks {
       this.roomCode = e;
     else {
       if (this.requireRoomCode)
-        return Promise.reject(new Error("QDP is configured with requireRoomCode=true, but no code was provided to joinRoom()."));
-      this.roomCode = "QDP-PUBLIC-SWARM";
+        return Promise.reject(new Error("UQDP is configured with requireRoomCode=true, but no code was provided to joinRoom()."));
+      this.roomCode = "UQDP-PUBLIC-SWARM";
     }
     return (t = this.mqttConfig) != null && t.e2e && !this._e2e && (this._e2e = new st(), await this._e2e.init(), this._e2ePublicKeyB64 = btoa(String.fromCharCode(...await this._e2e.getPublicKey()))), this._iceRacing && await this._probeIceServers(), this._pcCreated || this._createPeerConnection(), this._preWarmedConnectPromise && (await this._preWarmedConnectPromise, this._preWarmedConnectPromise = null), new Promise((s, n) => {
       this._joinResolver = s, this.signaling = this._createSignaling(!1), this._wrapSignalingSend(), this.signaling.onOpen = () => {
@@ -3913,19 +3952,19 @@ class ks {
   }
   async send(e) {
     if (!this.bonding) throw new Error("Not connected");
-    const t = _t++, n = ot(e, t, this.chunkSize).map((i) => M(k.CHUNK, i));
+    const t = _t++, n = ot(e, t, this.chunkSize).map((i) => D(k.CHUNK, i));
     await this.bonding.sendChunks(n);
   }
   async sendFile(e) {
     if (!this.bonding) throw new Error("Not connected");
-    const t = _t++, s = await e.arrayBuffer(), n = { name: e.name, size: e.size, type: e.type }, i = M(k.CHUNK, os(t, n));
+    const t = _t++, s = await e.arrayBuffer(), n = { name: e.name, size: e.size, type: e.type }, i = D(k.CHUNK, as(t, n));
     for (const a of this.bonding.senders)
       try {
         await a(i);
       } catch {
       }
     await new Promise((a) => setTimeout(a, 50));
-    const r = ot(s, t, this.chunkSize), o = r.map((a) => M(k.CHUNK, a));
+    const r = ot(s, t, this.chunkSize), o = r.map((a) => D(k.CHUNK, a));
     this._emit("send-start", { transferId: t, name: e.name, totalChunks: r.length }), await this.bonding.sendChunks(o), this._emit("send-complete", { transferId: t, name: e.name });
   }
   getStats() {
@@ -4054,12 +4093,12 @@ class ks {
     if (this.driveSignalConfig)
       return new w(this.roomCode, e, this.driveSignalConfig);
     const t = !!this.mqttConfig, s = !this.signalServerUrl && !this.driveSignalConfig, n = !!(this.dhtNodes && this.dhtNodes.length), i = [];
-    if (t && i.push(new Gt(this.roomCode, e, this.mqttConfig)), n && i.push(new Qt(this.roomCode, e, this.dhtNodes)), s) {
+    if (t && i.push(new Jt(this.roomCode, e, this.mqttConfig)), n && i.push(new Yt(this.roomCode, e, this.dhtNodes)), s) {
       const o = new fe(this.roomCode, e, this.trackerUrls);
       this._preWarmedManager && (o.useManager(this._preWarmedManager), this._preWarmedManager = null), i.push(o);
     }
     if (this.bondTransports && i.length >= 2)
-      return new zt(i);
+      return new Xt(i);
     if (i.length > 0)
       return i[0];
     if (this.signalServerUrl) {
@@ -4134,7 +4173,7 @@ class ks {
       this._emit("connection-state", t), t === "connected" ? (this._iceRestartPending = !1, this._onPeerConnected()) : (t === "disconnected" || t === "failed") && (t === "failed" && !this._iceRestartPending ? (this._iceRestartPending = !0, this._restartIce()) : this._emit("disconnected"));
     }, this.pc.oniceconnectionstatechange = () => {
       this.pc && this._emit("ice-state", this.pc.iceConnectionState);
-    }, this.pool = new Ft(this.pc, {
+    }, this.pool = new Bt(this.pc, {
       channelCount: this.dataChannelCount,
       ordered: this.serverMode
     }), this.pool.onOpen((t) => {
@@ -4231,14 +4270,14 @@ class ks {
     const e = async (s) => {
       this.bonding && this.bonding.senders.length > 0 && await this.bonding.sendSingle(s);
     }, t = this.serverMode ? async (s) => {
-      const n = M(k.PROXY, s);
+      const n = D(k.PROXY, s);
       this.pool && this.pool.getOpenCount() > 0 ? this.pool.sendImmediate(n) === -1 && await this.pool.send(n) : await e(n);
     } : async (s) => {
-      await e(M(k.PROXY, s));
+      await e(D(k.PROXY, s));
     };
-    this.message = new ds(async (s) => {
-      await e(M(k.MESSAGE, s));
-    }), this._proxyClient = new ms(t), this._proxyServer = new Is(t, this._proxyOpts), this.proxy = {
+    this.message = new fs(async (s) => {
+      await e(D(k.MESSAGE, s));
+    }), this._proxyClient = new gs(t), this._proxyServer = new Ps(t, this._proxyOpts), this.proxy = {
       fetch: (s, n) => this._proxyClient.fetch(s, n),
       intercept: (s, n) => this._proxyClient.intercept(s, n),
       release: () => this._proxyClient.release(),
@@ -4253,15 +4292,15 @@ class ks {
         blockList: n.blockList || [],
         onRelay: n.onRelay || null
       }), this._proxyRelay.setUpstream(async (i) => {
-        const r = M(k.PROXY, i);
+        const r = D(k.PROXY, i);
         s.bonding && s.bonding.senders.length > 0 && await s.bonding.sendSingle(r);
       }), this._proxyRelay.setDownstream(t), this._proxyRelay.start(), this._proxyRelay),
       stopRelay: () => {
         this._proxyRelay && (this._proxyRelay.stop(), this._proxyRelay = null);
       },
       getRelayStats: () => this._proxyRelay ? this._proxyRelay.getStats() : null
-    }, this.stream = new Ps(async (s) => {
-      await e(M(k.STREAM, s));
+    }, this.stream = new Ts(async (s) => {
+      await e(D(k.STREAM, s));
     });
   }
   _updateBondingPaths() {
@@ -4270,36 +4309,24 @@ class ks {
     if (!s || s.has("webrtc") || s.has("dc"))
       for (const o of this.pool.openChannels) {
         const a = `dc-${o}`;
-        t.push(a), e.push(async (h) => {
-          await this.pool.sendOnChannel(o, h);
-        });
+        t.push(a);
+        const h = async (l) => {
+          await this.pool.sendOnChannel(o, l);
+        };
+        h.sendMany = async (l, d) => {
+          await this.pool.sendManyOnChannel(o, l, d);
+        }, h.getBufferedAmount = () => this.pool.getBufferedAmount(o), e.push(h);
       }
     const n = this.pool.getOpenCount() > 0, i = this._allDcDead;
-    if (this._allDcDead = !n, this._mqttTransport && this._mqttTransport.connected && (!s || s.has("mqtt"))) {
-      const o = "mqtt-0";
-      t.push(o), e.push(async (a) => {
-        await this._mqttTransport.send(a), this.monitor.recordBytesSent(o, a.byteLength || a.length);
-      });
-    }
-    if (this._webTransport && this._webTransport.connected && (!s || s.has("webtransport"))) {
-      const o = "wt-0";
-      t.push(o), e.push(async (a) => {
-        await this._webTransport.send(a), this.monitor.recordBytesSent(o, a.byteLength || a.length);
-      });
-    }
-    if (this._icmpTransport && this._icmpTransport.connected && (!s || s.has("icmp"))) {
-      const o = "icmp-0";
-      t.push(o), e.push(async (a) => {
-        await this._icmpTransport.send(a), this.monitor.recordBytesSent(o, a.byteLength || a.length);
-      });
-    }
-    if (this._srtpTransport && this._srtpTransport.connected && (!s || s.has("srtp"))) {
-      const o = "srtp-0";
-      t.push(o), e.push(async (a) => {
-        await this._srtpTransport.send(a), this.monitor.recordBytesSent(o, a.byteLength || a.length);
-      });
-    }
-    this._allDcDead && !i && ((r = this._mqttTransport) != null && r.connected) && this._emit("transport-failover", { from: "webrtc", to: "mqtt" }), !this._allDcDead && i && this._emit("transport-failover", { from: "mqtt", to: "webrtc" }), this.bonding ? this.bonding.updatePaths(e, t) : (this.bonding = new is({
+    this._allDcDead = !n, this._mqttTransport && this._mqttTransport.connected && (!s || s.has("mqtt")) && (t.push("mqtt-0"), e.push(async (a) => {
+      await this._mqttTransport.send(a);
+    })), this._webTransport && this._webTransport.connected && (!s || s.has("webtransport")) && (t.push("wt-0"), e.push(async (a) => {
+      await this._webTransport.send(a);
+    })), this._icmpTransport && this._icmpTransport.connected && (!s || s.has("icmp")) && (t.push("icmp-0"), e.push(async (a) => {
+      await this._icmpTransport.send(a);
+    })), this._srtpTransport && this._srtpTransport.connected && (!s || s.has("srtp")) && (t.push("srtp-0"), e.push(async (a) => {
+      await this._srtpTransport.send(a);
+    })), this._allDcDead && !i && ((r = this._mqttTransport) != null && r.connected) && this._emit("transport-failover", { from: "webrtc", to: "mqtt" }), !this._allDcDead && i && this._emit("transport-failover", { from: "mqtt", to: "webrtc" }), this.bonding ? this.bonding.updatePaths(e, t) : (this.bonding = new rs({
       senders: e,
       linkIds: t,
       monitor: this.monitor
@@ -4312,7 +4339,7 @@ class ks {
   }
   _startMQTTTransport() {
     if (!this.mqttConfig || !this.bondTransports && !this.mqttConfig.dataTransport || this._bondSet && !this._bondSet.has("mqtt") && !this.mqttConfig.dataTransport || !this.signaling) return;
-    const e = this.signaling.peerId || "qdp-" + Array.from(crypto.getRandomValues(new Uint8Array(8))).map((s) => s.toString(16).padStart(2, "0")).join(""), t = this.signaling.remotePeerId;
+    const e = this.signaling.peerId || "uqdp-" + Array.from(crypto.getRandomValues(new Uint8Array(8))).map((s) => s.toString(16).padStart(2, "0")).join(""), t = this.signaling.remotePeerId;
     if (t) {
       if (this._mqttTransportOpts = {
         brokerUrl: this.mqttConfig.brokerUrl,
@@ -4331,7 +4358,7 @@ class ks {
         e2e: this._e2e,
         server: this.mqttConfig.server
       }, this.mqttConfig.brokerUrls && this.mqttConfig.brokerUrls.length > 1) {
-        this._mqttTransport = new Yt({
+        this._mqttTransport = new Zt({
           brokerUrls: this.mqttConfig.brokerUrls,
           roomCode: this.roomCode,
           localPeerId: e,
@@ -4363,7 +4390,7 @@ class ks {
     }
   }
   _connectMQTTTransport() {
-    this._mqttTransportOpts && (this._mqttTransport = new vt({
+    this._mqttTransportOpts && (this._mqttTransport = new Pt({
       ...this._mqttTransportOpts,
       onData: (e) => {
         this._routeIncoming(e, "mqtt-0");
@@ -4388,10 +4415,10 @@ class ks {
     var t;
     if (!this.webTransportConfig || !this.signaling) return;
     const e = this.signaling.remotePeerId;
-    e && (this._webTransport = new Xt({
+    e && (this._webTransport = new Qt({
       url: this.webTransportConfig.url,
       roomCode: this.roomCode,
-      localPeerId: this.signaling.peerId || ((t = this._mqttTransportOpts) == null ? void 0 : t.localPeerId) || "qdp-wt",
+      localPeerId: this.signaling.peerId || ((t = this._mqttTransportOpts) == null ? void 0 : t.localPeerId) || "uqdp-wt",
       remotePeerId: e,
       reliable: this.webTransportConfig.reliable ?? !1,
       server: this.webTransportConfig.server,
@@ -4419,7 +4446,7 @@ class ks {
   }
   _startICMPTransport() {
     var e, t;
-    this.icmpConfig && (this._icmpTransport = new ss({
+    this.icmpConfig && (this._icmpTransport = new ns({
       targetIp: this.icmpConfig.targetIp,
       strategy: this.icmpConfig.strategy || "relay",
       relayUrl: this.icmpConfig.relayUrl,
@@ -4459,7 +4486,7 @@ class ks {
   }
   _startSRTPTransport() {
     var e, t;
-    if (this.srtpConfig && (this._srtpTransport = new ns({
+    if (this.srtpConfig && (this._srtpTransport = new is({
       iceServers: this.srtpConfig.iceServers || this.iceServers,
       roomCode: this.roomCode,
       localPeerId: (e = this.signaling) == null ? void 0 : e.peerId,
@@ -4507,13 +4534,13 @@ class ks {
     }
   }
   _handleChunkData(e, t) {
-    const s = rs(e);
+    const s = os(e);
     if (s.flags & z.PROBE) {
       this._handleProbe(s, t);
       return;
     }
     if (s.flags & z.META) {
-      const n = as(s.payload);
+      const n = cs(s.payload);
       this._pendingMeta.set(s.transferId, n), this._emit("file-incoming", { transferId: s.transferId, ...n });
       return;
     }
@@ -4534,7 +4561,7 @@ class ks {
       const n = setInterval(async () => {
         const i = at(performance.now());
         try {
-          await this.pool.sendOnChannel(t, M(k.CHUNK, i)), this.monitor.recordProbeSent(s);
+          await this.pool.sendOnChannel(t, D(k.CHUNK, i)), this.monitor.recordProbeSent(s);
         } catch {
         }
       }, e);
@@ -4543,7 +4570,7 @@ class ks {
   }
   _handleProbe(e, t) {
     if (e.payload) {
-      const s = cs(e.payload), n = performance.now() - s;
+      const s = hs(e.payload), n = performance.now() - s;
       n > 0 && n < 3e4 && this.monitor.recordProbeResponse(t, n);
     }
   }
@@ -4555,7 +4582,7 @@ class ks {
       if (!this._mqttTransport || !this._mqttTransport.connected) return;
       const n = at(performance.now());
       try {
-        await this._mqttTransport.send(M(k.CHUNK, n)), this.monitor.recordProbeSent(t);
+        await this._mqttTransport.send(D(k.CHUNK, n)), this.monitor.recordProbeSent(t);
       } catch {
       }
     }, e);
@@ -4566,8 +4593,131 @@ class ks {
     e && (clearInterval(e), this._probeTimers.delete("mqtt-0"));
   }
 }
-const Js = ks;
-class zs {
+const Js = Ut, zs = Ut;
+class Xs {
+  constructor({ urls: e, reconnectDelayMs: t = 1e3, maxReconnectAttempts: s = 10, pingIntervalMs: n = 5e3 }) {
+    this.urls = e, this.reconnectDelayMs = t, this.maxReconnectAttempts = s, this.pingIntervalMs = n, this.sockets = new Array(e.length).fill(null), this.reconnectAttempts = new Array(e.length).fill(0), this.latencies = /* @__PURE__ */ new Map(), this._pingTimers = /* @__PURE__ */ new Map(), this._pingSentAt = /* @__PURE__ */ new Map(), this._onMessage = null, this._onOpen = null, this._onClose = null, this._onError = null, this._onAllConnected = null;
+  }
+  onMessage(e) {
+    this._onMessage = e;
+  }
+  onOpen(e) {
+    this._onOpen = e;
+  }
+  onClose(e) {
+    this._onClose = e;
+  }
+  onError(e) {
+    this._onError = e;
+  }
+  onAllConnected(e) {
+    this._onAllConnected = e;
+  }
+  connectAll() {
+    for (let e = 0; e < this.urls.length; e++)
+      this._connect(e);
+  }
+  connectFirst() {
+    return new Promise((e) => {
+      let t = !1;
+      for (let s = 0; s < this.urls.length; s++) {
+        this._connect(s), this._onOpen;
+        const n = s, i = this.sockets[n];
+        if (i) {
+          const r = i.onopen;
+          i.onopen = () => {
+            r && r(), t || (t = !0, e(n));
+          };
+        }
+      }
+    });
+  }
+  disconnectAll() {
+    for (let e = 0; e < this.sockets.length; e++)
+      this._clearPing(e), this.sockets[e] && (this.sockets[e].onclose = null, this.sockets[e].close(), this.sockets[e] = null);
+  }
+  send(e, t) {
+    const s = this.sockets[e];
+    return s && s.readyState === WebSocket.OPEN ? (s.send(t), !0) : !1;
+  }
+  sendBest(e) {
+    const t = this.getBestSocketIndex();
+    return t >= 0 ? this.send(t, e) : !1;
+  }
+  broadcast(e) {
+    for (let t = 0; t < this.sockets.length; t++)
+      this.send(t, e);
+  }
+  getOpenCount() {
+    return this.sockets.filter((e) => e && e.readyState === WebSocket.OPEN).length;
+  }
+  getOpenIndices() {
+    const e = [];
+    for (let t = 0; t < this.sockets.length; t++)
+      this.sockets[t] && this.sockets[t].readyState === WebSocket.OPEN && e.push(t);
+    return e;
+  }
+  getBestSocketIndex() {
+    let e = -1, t = 1 / 0;
+    for (let s = 0; s < this.sockets.length; s++)
+      if (this.sockets[s] && this.sockets[s].readyState === WebSocket.OPEN) {
+        const n = this.latencies.get(s) ?? 1 / 0;
+        n < t && (t = n, e = s);
+      }
+    if (e < 0) {
+      for (let s = 0; s < this.sockets.length; s++)
+        if (this.sockets[s] && this.sockets[s].readyState === WebSocket.OPEN)
+          return s;
+    }
+    return e;
+  }
+  setLatency(e, t) {
+    this.latencies.set(e, t);
+  }
+  _startPing(e) {
+    this._clearPing(e);
+    const t = setInterval(() => {
+      const s = this.sockets[e];
+      if (!(!s || s.readyState !== WebSocket.OPEN)) {
+        this._pingSentAt.set(e, performance.now());
+        try {
+          s.send(JSON.stringify({ action: "ping" }));
+        } catch {
+        }
+      }
+    }, this.pingIntervalMs);
+    this._pingTimers.set(e, t);
+  }
+  _clearPing(e) {
+    const t = this._pingTimers.get(e);
+    t && (clearInterval(t), this._pingTimers.delete(e));
+  }
+  _recordPong(e) {
+    const t = this._pingSentAt.get(e);
+    if (t != null) {
+      const s = performance.now() - t, n = this.latencies.get(e);
+      this.latencies.set(e, n == null ? s : 0.3 * s + 0.7 * n), this._pingSentAt.delete(e);
+    }
+  }
+  _connect(e) {
+    const t = this.urls[e], s = new WebSocket(t);
+    s.binaryType = "arraybuffer", this.sockets[e] = s, s.onopen = () => {
+      this.reconnectAttempts[e] = 0, this._startPing(e), this._onOpen && this._onOpen(e), this.getOpenCount() === this.urls.length && this._onAllConnected && this._onAllConnected();
+    }, s.onmessage = (n) => {
+      this._recordPong(e), this._onMessage && this._onMessage(e, n.data);
+    }, s.onclose = () => {
+      this._clearPing(e), this._onClose && this._onClose(e), this._tryReconnect(e);
+    }, s.onerror = (n) => {
+      this._onError && this._onError(e, n);
+    };
+  }
+  _tryReconnect(e) {
+    if (this.reconnectAttempts[e] >= this.maxReconnectAttempts) return;
+    const t = this.reconnectAttempts[e]++, s = t === 0 ? 0 : Math.min(this.reconnectDelayMs * 2 ** t, 3e4);
+    setTimeout(() => this._connect(e), s);
+  }
+}
+class Qs {
   constructor(e = [], t = {}) {
     this._brokerConfigs = e, this._connections = [], this._topicFilter = t.topicFilter || null, this._topicRewrite = t.topicRewrite || null, this._closed = !1, this.onRelay = t.onRelay || null, this.onOpen = t.onOpen || null, this.onClose = t.onClose || null;
   }
@@ -4581,7 +4731,7 @@ class zs {
         packetId: 0,
         recvBuf: new Uint8Array(0),
         pingInterval: null,
-        clientId: "qdp-bridge-" + t + "-" + Array.from(crypto.getRandomValues(new Uint8Array(4))).map((n) => n.toString(16).padStart(2, "0")).join("")
+        clientId: "uqdp-bridge-" + t + "-" + Array.from(crypto.getRandomValues(new Uint8Array(4))).map((n) => n.toString(16).padStart(2, "0")).join("")
       };
       this._connections.push(s), this._connectBroker(s);
     });
@@ -4633,7 +4783,7 @@ class zs {
             var r;
             ((r = e.ws) == null ? void 0 : r.readyState) === WebSocket.OPEN && e.ws.send(Fe());
           }, (e.config.keepalive || 30) * 1e3 * 0.75);
-          const n = e.config.topics || [`${e.config.topicPrefix || "qdp"}/#`], i = ++e.packetId & 65535 || 1;
+          const n = e.config.topics || [`${e.config.topicPrefix || "uqdp"}/#`], i = ++e.packetId & 65535 || 1;
           e.ws.send(Le(i, n, e.config.qos || 1)), this.onOpen && this.onOpen(e.index);
         }
         break;
@@ -4651,13 +4801,13 @@ class zs {
     const n = this._topicRewrite ? this._topicRewrite(t) : t;
     for (const r of this._connections) {
       if (r === e || !r.connected) continue;
-      const o = ++r.packetId & 65535 || 1, a = Me(n, s, r.config.qos || 1, o);
+      const o = ++r.packetId & 65535 || 1, a = De(n, s, r.config.qos || 1, o);
       ((i = r.ws) == null ? void 0 : i.readyState) === WebSocket.OPEN && r.ws.send(a);
     }
     this.onRelay && this.onRelay({ topic: n, sourceIndex: e.index });
   }
 }
-const Pe = {
+const ve = {
   cloudflare: "https://cloudflare-dns.com/dns-query",
   google: "https://dns.google/resolve",
   quad9: "https://dns.quad9.net:5053/dns-query"
@@ -4705,14 +4855,14 @@ function Os(c, e) {
     d.set(u, f), f += u.length;
   return d.set(a, f), f += a.length, d.set(h, f), d;
 }
-function Ds(c) {
+function Ms(c) {
   let e = "";
   for (let t = 0; t < c.length; t++) e += String.fromCharCode(c[t]);
   return btoa(e).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
-class Xs {
+class Ys {
   constructor(e = {}) {
-    this.resolver = e.resolver || "cloudflare", this.baseDomain = e.baseDomain, this.roomCode = e.roomCode, this.localPeerId = e.localPeerId, this.remotePeerId = e.remotePeerId, this.pollInterval = e.pollInterval || 250, this._serverConfig = e.server || null, this._relay = null, this.connected = !1, this.onData = e.onData || null, this.onOpen = e.onOpen || null, this.onClose = e.onClose || null, this._resolverUrl = typeof this.resolver == "string" && Pe[this.resolver] ? Pe[this.resolver] : this.resolver || Pe.cloudflare, this._closed = !1, this._pollTimer = null, this._seqSend = 0, this._seqRecv = 0, this._useJSON = this._resolverUrl.includes("dns.google");
+    this.resolver = e.resolver || "cloudflare", this.baseDomain = e.baseDomain, this.roomCode = e.roomCode, this.localPeerId = e.localPeerId, this.remotePeerId = e.remotePeerId, this.pollInterval = e.pollInterval || 250, this._serverConfig = e.server || null, this._relay = null, this.connected = !1, this.onData = e.onData || null, this.onOpen = e.onOpen || null, this.onClose = e.onClose || null, this._resolverUrl = typeof this.resolver == "string" && ve[this.resolver] ? ve[this.resolver] : this.resolver || ve.cloudflare, this._closed = !1, this._pollTimer = null, this._seqSend = 0, this._seqRecv = 0, this._useJSON = this._resolverUrl.includes("dns.google");
   }
   connect() {
     if (this._serverConfig) return this._connectServer();
@@ -4759,7 +4909,7 @@ class Xs {
   }
   async _queryWire(e, t) {
     try {
-      const s = Os(e, t), n = Ds(s), i = await fetch(`${this._resolverUrl}?dns=${n}`, {
+      const s = Os(e, t), n = Ms(s), i = await fetch(`${this._resolverUrl}?dns=${n}`, {
         headers: { Accept: "application/dns-message" }
       });
       return new Uint8Array(await i.arrayBuffer());
@@ -4793,7 +4943,7 @@ class Xs {
     };
   }
 }
-class Qs {
+class Zs {
   constructor(e = {}) {
     this.workerUrl = e.workerUrl, this.roomCode = e.roomCode, this.localPeerId = e.localPeerId, this.remotePeerId = e.remotePeerId, this._serverConfig = e.server || null, this._relay = null, this.connected = !1, this.onData = e.onData || null, this.onOpen = e.onOpen || null, this.onClose = e.onClose || null, this._ws = null, this._closed = !1;
   }
@@ -4858,7 +5008,7 @@ class Qs {
     };
   }
 }
-class Ys {
+class en {
   constructor(e = {}) {
     this.serverUrl = e.serverUrl, this.roomCode = e.roomCode, this.localPeerId = e.localPeerId, this.remotePeerId = e.remotePeerId, this.pollMode = e.pollMode || !1, this.pollInterval = e.pollInterval || 100, this._serverConfig = e.server || null, this._relay = null, this.connected = !1, this.onData = e.onData || null, this.onOpen = e.onOpen || null, this.onClose = e.onClose || null, this._eventSource = null, this._closed = !1, this._pollTimer = null, this._lastEventId = "0";
   }
@@ -4961,7 +5111,7 @@ class Ys {
     };
   }
 }
-const Te = 3, qs = 6, Ms = 7, ke = 8, xe = 9, Ae = 18, pt = 19, Ls = 22, Re = 6, ae = 20, ce = 21, Fs = 25, Bs = 12, G = 554869826;
+const Te = 3, qs = 6, Ds = 7, ke = 8, xe = 9, Ae = 18, pt = 19, Ls = 22, Re = 6, ae = 20, ce = 21, Fs = 25, Bs = 12, G = 554869826;
 function he() {
   return crypto.getRandomValues(new Uint8Array(12));
 }
@@ -4998,7 +5148,7 @@ function de(c) {
   }
   return { type: t, txId: n, attributes: i };
 }
-class Zs {
+class tn {
   constructor(e = {}) {
     this.turnUrl = e.turnUrl, this.username = e.username || "", this.credential = e.credential || "", this.peerIp = e.peerIp || "0.0.0.0", this.peerPort = e.peerPort || 49152, this.roomCode = e.roomCode, this.localPeerId = e.localPeerId, this.remotePeerId = e.remotePeerId, this._serverConfig = e.server || null, this._relay = null, this.connected = !1, this.onData = e.onData || null, this.onOpen = e.onOpen || null, this.onClose = e.onClose || null, this._ws = null, this._closed = !1, this._channelNumber = 16384, this._channelBound = !1, this._realm = "", this._nonce = "", this._relayedAddr = null;
   }
@@ -5028,7 +5178,7 @@ class Zs {
           }
         }
         const o = de(r);
-        if (o && o.type === (Ms | 256))
+        if (o && o.type === (Ds | 256))
           for (const a of o.attributes)
             a.type === pt && this.onData && this.onData(a.value.buffer);
       }, this._ws.onclose = () => {
@@ -5181,7 +5331,7 @@ function Ws(c) {
   }
   return null;
 }
-class en {
+class sn {
   constructor(e = {}) {
     this.serverUrl = e.serverUrl, this.roomCode = e.roomCode, this.localPeerId = e.localPeerId, this.remotePeerId = e.remotePeerId, this.pollInterval = e.pollInterval || 150, this.jitter = e.jitter || 50, this.rotateEndpoints = e.rotateEndpoints !== !1, this._serverConfig = e.server || null, this._relay = null, this.connected = !1, this.onData = e.onData || null, this.onOpen = e.onOpen || null, this.onClose = e.onClose || null, this._closed = !1, this._pollTimer = null, this._seq = 0, this._lastSeq = "0", this._endpointIdx = 0;
   }
@@ -5274,7 +5424,7 @@ class en {
     };
   }
 }
-const X = 2, Ke = 3, Ut = X * Ke, gt = 16;
+const X = 2, Ke = 3, Ot = X * Ke, gt = 16;
 function Hs(c, e, t) {
   const s = (1 << e) - 1;
   return t & ~s | c & s;
@@ -5282,14 +5432,14 @@ function Hs(c, e, t) {
 function $s(c, e) {
   return c & (1 << e) - 1;
 }
-function Ot(c, e, t) {
+function Mt(c, e, t) {
   const s = e instanceof ArrayBuffer ? new Uint8Array(e) : new Uint8Array(e);
   s.length * 8;
   let n = 0, i = t * 4;
   for (let r = 0; r < s.length && i < c.data.length - 4; r++) {
     const o = s[r];
     for (let a = 7; a >= 0 && i < c.data.length - 4; a -= X) {
-      const h = n % Ke, l = Math.floor(n / Ut) * 4 + t * 4;
+      const h = n % Ke, l = Math.floor(n / Ot) * 4 + t * 4;
       if (l + h >= c.data.length) break;
       const d = Math.min(X, a + 1), f = o >> a - d + 1 & (1 << d) - 1;
       c.data[l + h] = Hs(f, d, c.data[l + h]), n++;
@@ -5297,11 +5447,11 @@ function Ot(c, e, t) {
   }
   return n;
 }
-function Dt(c, e, t) {
+function qt(c, e, t) {
   const s = new Uint8Array(e);
   let n = 0, i = 0, r = 0, o = 0;
   for (; i < e; ) {
-    const a = n % Ke, h = Math.floor(n / Ut) * 4 + t * 4;
+    const a = n % Ke, h = Math.floor(n / Ot) * 4 + t * 4;
     if (h + a >= c.data.length) break;
     const l = $s(c.data[h + a], X);
     if (r = r << X | l, o += X, o >= 8) {
@@ -5314,13 +5464,13 @@ function Dt(c, e, t) {
 }
 function js(c, e) {
   const t = new Uint8Array(4);
-  new DataView(t.buffer).setUint32(0, e, !0), Ot(c, t, 0);
+  new DataView(t.buffer).setUint32(0, e, !0), Mt(c, t, 0);
 }
 function Ks(c) {
-  const e = Dt(c, 4, 0);
+  const e = qt(c, 4, 0);
   return new DataView(e.buffer).getUint32(0, !0);
 }
-class tn {
+class nn {
   constructor(e = {}) {
     this.serverUrl = e.serverUrl, this.roomCode = e.roomCode, this.localPeerId = e.localPeerId, this.remotePeerId = e.remotePeerId, this.imageWidth = e.imageWidth || 256, this.imageHeight = e.imageHeight || 256, this.pollInterval = e.pollInterval || 300, this._serverConfig = e.server || null, this._relay = null, this.connected = !1, this.onData = e.onData || null, this.onOpen = e.onOpen || null, this.onClose = e.onClose || null, this._closed = !1, this._pollTimer = null, this._seq = 0, this._lastSeq = "0", this._canvas = null, this._ctx = null;
   }
@@ -5367,7 +5517,7 @@ class tn {
       this._ctx.fillRect(a, h, l, d);
     }
     const s = this._ctx.getImageData(0, 0, this.imageWidth, this.imageHeight);
-    js(s, t.length), Ot(s, t, gt), this._ctx.putImageData(s, 0, 0);
+    js(s, t.length), Mt(s, t, gt), this._ctx.putImageData(s, 0, 0);
     let n;
     this._canvas.convertToBlob ? n = await this._canvas.convertToBlob({ type: "image/png" }) : n = await new Promise((o) => this._canvas.toBlob(o, "image/png"));
     const i = new FormData();
@@ -5399,7 +5549,7 @@ class tn {
             this._ensureCanvas(), (this._canvas.width !== r.width || this._canvas.height !== r.height) && (this._canvas.width = r.width, this._canvas.height = r.height, this._ctx = this._canvas.getContext("2d")), this._ctx.drawImage(r, 0, 0);
             const o = this._ctx.getImageData(0, 0, r.width, r.height), a = Ks(o);
             if (a > 0 && a < o.data.length) {
-              const l = Dt(o, a, gt);
+              const l = qt(o, a, gt);
               this.onData && this.onData(l.buffer);
             }
             const h = s.headers.get("x-seq");
@@ -5432,52 +5582,55 @@ class tn {
   }
 }
 export {
-  is as BondingEngine,
-  Qs as CDNTransport,
+  rs as BondingEngine,
+  Zs as CDNTransport,
   Tt as ConnectionMonitor,
   kt as DEFAULT_CHUNK_SIZE,
-  Qt as DHTSignal,
-  Ft as DataChannelPool,
+  Yt as DHTSignal,
+  Bt as DataChannelPool,
   tt as DirectSignal,
-  Xs as DoHTransport,
+  Ys as DoHTransport,
   w as DriveSignal,
   st as E2ECrypto,
   z as Flags,
   _e as HEADER_SIZE,
-  en as HTTPCamoTransport,
-  ss as ICMPTransport,
+  sn as HTTPCamoTransport,
+  ns as ICMPTransport,
   q as ICMP_STRATEGY,
-  Bt as IceRacer,
-  zs as MQTTBridge,
-  Yt as MQTTPool,
-  Gt as MQTTSignal,
-  vt as MQTTTransport,
+  Nt as IceRacer,
+  Qs as MQTTBridge,
+  Zt as MQTTPool,
+  Jt as MQTTSignal,
+  Pt as MQTTTransport,
   vs as MediaManager,
-  ds as Messenger,
-  ms as ProxyClient,
+  fs as Messenger,
+  Xs as MultiWSS,
+  gs as ProxyClient,
   S as ProxyFrameType,
   xt as ProxyRelay,
-  Is as ProxyServer,
-  ks as QDP,
+  Ps as ProxyServer,
+  Js as QDP,
   Gs as RelayChain,
-  ns as SRTPTransport,
-  Ys as SSETransport,
+  is as SRTPTransport,
+  en as SSETransport,
   L as ServerRelay,
   yt as SignalManager,
-  zt as SignalRacer,
-  Js as SpeedRTC,
-  tn as StegTransport,
+  Xt as SignalRacer,
+  zs as SpeedRTC,
+  nn as StegTransport,
   ut as Stream,
-  Ps as StreamManager,
-  Zs as TURNTransport,
-  Xt as WebTransportTransport,
-  rs as decodeChunk,
-  as as decodeMetaPayload,
-  cs as decodeProbeTimestamp,
+  Ts as StreamManager,
+  tn as TURNTransport,
+  fe as TorrentSignal,
+  Ut as UQDP,
+  Qt as WebTransportTransport,
+  os as decodeChunk,
+  cs as decodeMetaPayload,
+  hs as decodeProbeTimestamp,
   pe as decodeProxyFrame,
   je as encodeChunk,
-  os as encodeMetaChunk,
+  as as encodeMetaChunk,
   at as encodeProbe,
-  fs as encodeRequest,
+  us as encodeRequest,
   ot as splitIntoChunks
 };
